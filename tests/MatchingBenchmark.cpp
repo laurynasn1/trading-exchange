@@ -1,0 +1,131 @@
+#include <iostream>
+#include <chrono>
+#include <thread>
+#include <random>
+
+#include <benchmark/benchmark.h>
+
+#include "MatchingEngine.hpp"
+#include "Timer.hpp"
+
+static void BM_InsertOrder(benchmark::State& state)
+{
+    MatchingEngine engine;
+    uint64_t orderId = 1;
+
+    int delta = state.range(0);
+
+    for (auto _ : state)
+    {
+        auto order = std::make_shared<Order>(orderId, "AAPL", Side::SELL, OrderType::LIMIT, 100, 10000.00 + delta * 0.01);
+
+        uint64_t start = Timer::rdtsc();
+        engine.SubmitOrder(order);
+        uint64_t end = Timer::rdtsc();
+
+        benchmark::DoNotOptimize(order);
+        state.SetIterationTime(Timer::cycles_to_ns(end - start) / 1e9);  // Convert to seconds
+    }
+}
+
+BENCHMARK(BM_InsertOrder)->UseManualTime()->Arg(-1)->Arg(0)->Arg(1)->Iterations(10000000);
+
+static void BM_MatchSingle(benchmark::State& state)
+{
+    MatchingEngine engine;
+
+    uint64_t orderId = 1;
+
+    for (auto _ : state)
+    {
+        auto sell = std::make_shared<Order>(orderId++, "AAPL", Side::SELL, OrderType::LIMIT, 100, 150.00);
+        engine.SubmitOrder(sell);
+
+        auto buy = std::make_shared<Order>(orderId++, "AAPL", Side::BUY, OrderType::LIMIT, 100, 150.00);
+
+        uint64_t start = Timer::rdtsc();
+        engine.SubmitOrder(buy);
+        uint64_t end = Timer::rdtsc();
+
+        benchmark::DoNotOptimize(buy);
+        state.SetIterationTime(Timer::cycles_to_ns(end - start) / 1e9);
+    }
+}
+
+BENCHMARK(BM_MatchSingle)->UseManualTime();
+
+static void BM_MatchOrder(benchmark::State& state)
+{
+    MatchingEngine engine;
+
+    const int totalOrders = 10'000;
+    int levelsToSweep = state.range(0);
+    int ordersPerLevel = totalOrders / levelsToSweep;
+    int quantityPerLevel = 10;
+    int totalQty = levelsToSweep * ordersPerLevel * quantityPerLevel;
+
+    uint64_t buy_id = 1000000;
+
+    for (auto _ : state)
+    {
+        for (int i = 0; i < levelsToSweep; ++i)
+        {
+            for (int j = 0; j < ordersPerLevel; j++)
+            {
+                auto order = std::make_shared<Order>(i * ordersPerLevel + j, "AAPL", Side::SELL, OrderType::LIMIT, quantityPerLevel, 150.00 + (i) * 0.01);
+                engine.SubmitOrder(order);
+            }
+        }
+
+        auto buy = std::make_shared<Order>(buy_id++, "AAPL", Side::BUY, OrderType::MARKET, totalQty, 0.0);
+
+        uint64_t start = Timer::rdtsc();
+        engine.SubmitOrder(buy);
+        uint64_t end = Timer::rdtsc();
+
+        state.SetIterationTime(Timer::cycles_to_ns(end - start) / 1e9);
+    }
+
+    state.SetItemsProcessed(state.iterations());
+}
+
+BENCHMARK(BM_MatchOrder)->UseManualTime()->Arg(1)->Arg(100)->Arg(10000);
+
+static void BM_CancelOrder(benchmark::State& state)
+{
+    MatchingEngine engine;
+
+    int levels = state.range(0);
+    int ordersPerLevel = 1'000'000 / levels;
+    std::vector<int> indices;
+    indices.reserve(levels * ordersPerLevel);
+    for (int i = 0; i < levels; ++i)
+    {
+        for (int j = 0; j < ordersPerLevel; j++)
+        {
+            auto order = std::make_shared<Order>(i * ordersPerLevel + j, "AAPL", Side::SELL, OrderType::LIMIT, 100, 150.00 + i * 0.01);
+            engine.SubmitOrder(order);
+            indices.push_back(i * ordersPerLevel + j);
+        }
+    }
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+
+    std::shuffle(indices.begin(), indices.end(), gen);
+
+    int index = 0;
+    for (auto _ : state)
+    {
+        uint64_t start = Timer::rdtsc();
+        auto result = engine.CancelOrder(indices[index++]);
+        uint64_t end = Timer::rdtsc();
+        
+        benchmark::DoNotOptimize(result);
+        state.SetIterationTime(Timer::cycles_to_ns(end - start) / 1e9);
+    }
+}
+
+BENCHMARK(BM_CancelOrder)->UseManualTime()->Arg(1)->Arg(1000)->Arg(1000000)->Iterations(1000000);
+
+BENCHMARK_MAIN();

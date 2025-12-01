@@ -1,0 +1,25 @@
+#pragma once
+#include <cstdint>
+#include <string>
+
+enum class EventType
+{
+    ORDER_ACKED,
+    ORDER_FILLED,
+    ORDER_CANCELLED,
+    ORDER_REJECTED
+};
+
+struct MarketDataEvent
+{
+    EventType type;
+    uint64_t orderId;
+    uint64_t timestamp;
+
+    uint64_t tradeId;
+    uint64_t restingOrderId;
+    double price;
+    uint32_t quantity;
+
+    std::string rejectionReason;
+};
