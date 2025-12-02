@@ -14,6 +14,7 @@ struct MarketDataEvent
 {
     EventType type;
     uint64_t orderId;
+    uint64_t requestId;
     uint64_t timestamp;
 
     uint64_t tradeId;

@@ -21,13 +21,11 @@ private:
     std::thread thread;
     std::atomic<bool> running{ false };
 
-    uint64_t nextOrderId = 1;
-
 public:
-    OrderGateway(std::shared_ptr<SPSCQueue<OrderRequest>> queue_, size_t orders = 1'000'000) 
-        : queue(queue_) 
+    OrderGateway(std::shared_ptr<SPSCQueue<OrderRequest>> queue_, size_t numRequests)
+        : queue(queue_)
     {
-        generate_requests(orders);
+        GenerateRequests(numRequests);
     }
 
     ~OrderGateway()
@@ -35,10 +33,11 @@ public:
         Stop();
     }
 
-    void generate_requests(size_t num_orders)
+    void GenerateRequests(size_t numRequests)
     {
-        requests.reserve(num_orders);
-        activeOrderIds.reserve(num_orders / 2);
+        requestTimes.reserve(numRequests);
+        requests.reserve(numRequests);
+        activeOrderIds.reserve(numRequests / 2);
 
         std::random_device rd;
         std::mt19937 gen(42);
@@ -49,19 +48,19 @@ public:
 
         double mid_price = 150.00;
 
-        for (size_t i = 0; i < num_orders; ++i)
+        for (size_t i = 0; i < numRequests; ++i)
         {
             double p = type_dist(gen);
-            
+
             OrderRequest req;
-            
+
             if (p < 0.10 && !activeOrderIds.empty())
             {
                 // 10% Cancel orders
 
                 std::uniform_int_distribution<> cancel_dist(0, activeOrderIds.size() - 1);
                 size_t idx = cancel_dist(gen);
-                req.data = activeOrderIds[idx];
+                req.data = CancelRequest{ activeOrderIds[idx], i, Timer::rdtsc() };
 
                 activeOrderIds[idx] = activeOrderIds.back();
                 activeOrderIds.pop_back();
@@ -69,9 +68,8 @@ public:
             else if (p < 0.30)
             {
                 // 20% Market orders
-                req.data = Order(nextOrderId, "AAPL", side_dist(gen) == 0 ? Side::BUY : Side::SELL, OrderType::MARKET, qty_dist(gen), 0.0);
-                activeOrderIds.push_back(nextOrderId);
-                nextOrderId++;
+                req.data = Order(i, "AAPL", side_dist(gen) == 0 ? Side::BUY : Side::SELL, OrderType::MARKET, qty_dist(gen), 0.0);
+                activeOrderIds.push_back(i);
             }
             else if (p < 0.60)
             {
@@ -85,9 +83,8 @@ public:
                 else
                     aggressive_price = mid_price - 0.05 - type_dist(gen) * 0.10;
                 
-                req.data = Order(nextOrderId, "AAPL", side, OrderType::LIMIT, qty_dist(gen), aggressive_price);
-                activeOrderIds.push_back(nextOrderId);
-                nextOrderId++;
+                req.data = Order(i, "AAPL", side, OrderType::LIMIT, qty_dist(gen), aggressive_price);
+                activeOrderIds.push_back(i);
             }
             else
             {
@@ -101,9 +98,8 @@ public:
                 else
                     resting_price = mid_price + 0.05 + type_dist(gen) * 0.50;
 
-                req.data = Order(nextOrderId, "AAPL", side, OrderType::LIMIT, qty_dist(gen), resting_price);
-                activeOrderIds.push_back(nextOrderId);
-                nextOrderId++;
+                req.data = Order(i, "AAPL", side, OrderType::LIMIT, qty_dist(gen), resting_price);
+                activeOrderIds.push_back(i);
             }
             requests.push_back(req);
         }
@@ -139,13 +135,13 @@ public:
             if (!running) break;
 
             OrderRequest* slot = nullptr;
-            while ((slot = queue->TryPut()) == nullptr)
+            while ((slot = queue->GetWriteIndex()) == nullptr)
                 std::this_thread::yield();
-
             *slot = req;
-            //std::get<Order>(slot->data).timestamp = Timer::rdtsc();
 
+            requestTimes.push_back(Timer::rdtsc());
             sent++;
+            queue->UpdateWriteIndex();
         }
 
         auto end = std::chrono::steady_clock::now();
@@ -153,4 +149,7 @@ public:
 
         std::cout << "Gateway sent " << sent << " requests in " << duration << "us\n";
     }
+
+public:
+    std::vector<uint64_t> requestTimes;
 };

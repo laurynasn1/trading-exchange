@@ -1,7 +1,6 @@
 #pragma once
 #include "Order.hpp"
 #include "MarketDataEvent.hpp"
-#include "OutputPolicy.hpp"
 #include <map>
 #include <list>
 #include <memory>
@@ -31,7 +30,7 @@ private:
 public:
     OrderBook(std::string symbol_);
 
-    MarketDataEvent CancelOrder(uint64_t orderId);
+    MarketDataEvent CancelOrder(uint64_t targetOrderId, uint64_t requestId = 0);
 
     std::vector<MarketDataEvent> MatchOrder(std::shared_ptr<Order> order);
 

@@ -11,6 +11,7 @@ void MatchingEngine::SubmitOrder(std::shared_ptr<Order> order)
             eventCallback(MarketDataEvent{
                     .type = EventType::ORDER_REJECTED,
                     .orderId = order->orderId,
+                    .requestId = order->orderId,
                     .timestamp = Timer::rdtsc(),
                     .rejectionReason = rejectionReason
                 });
@@ -24,11 +25,11 @@ void MatchingEngine::SubmitOrder(std::shared_ptr<Order> order)
             eventCallback(event);
 }
 
-bool MatchingEngine::CancelOrder(uint64_t orderId)
+bool MatchingEngine::CancelOrder(uint64_t targetOrderId, uint64_t requestId)
 {
     for (auto& [symbol, book] : books)
     {
-        auto event = book->CancelOrder(orderId);
+        auto event = book->CancelOrder(requestId, targetOrderId);
         if (eventCallback) eventCallback(event);
         return true;
     }
@@ -99,7 +100,7 @@ void MatchingEngine::Run()
 {
     while (running)
     {
-        OrderRequest* req = inputQueue->TryPop();
+        OrderRequest* req = inputQueue->GetReadIndex();
 
         if (req == nullptr)
         {
@@ -112,9 +113,11 @@ void MatchingEngine::Run()
             auto order = std::make_shared<Order>(*orderRaw);
             SubmitOrder(order);
         }
-        else if (uint64_t* cancelOrderId = std::get_if<uint64_t>(&req->data))
+        else if (CancelRequest* cancelReq = std::get_if<CancelRequest>(&req->data))
         {
-            CancelOrder(*cancelOrderId);
+            CancelOrder(cancelReq->targetOrderId, cancelReq->requestId);
         }
+
+        inputQueue->UpdateReadIndex();
     }
 }

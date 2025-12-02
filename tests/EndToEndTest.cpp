@@ -6,6 +6,7 @@
 #include "OrderGateway.hpp"
 #include "MarketDataPublisher.hpp"
 #include "SPSCQueue.hpp"
+#include "LatencyStats.hpp"
 
 TEST(EndToEndTest, ThreeThreadPipeline)
 {
@@ -17,11 +18,12 @@ TEST(EndToEndTest, ThreeThreadPipeline)
     OrderGateway gateway(inputQueue, NUM_ORDERS);
     MatchingEngine engine(inputQueue, [outputQueue](const auto & event) {
         MarketDataEvent* slot = nullptr;
-        while ((slot = outputQueue->TryPut()) == nullptr)
+        while ((slot = outputQueue->GetWriteIndex()) == nullptr)
             std::this_thread::yield();
         *slot = event;
+        outputQueue->UpdateWriteIndex();
     });
-    MarketDataPublisher publisher(outputQueue);
+    MarketDataPublisher publisher(outputQueue, NUM_ORDERS);
 
     auto start = std::chrono::steady_clock::now();
 
@@ -43,7 +45,13 @@ TEST(EndToEndTest, ThreeThreadPipeline)
 
     std::cout << "Duration: " << durationMs << " ms\n";
     std::cout << "Orders acked: " << publisher.stats.ackedOrders << "\n";
-    std::cout << "Orders canceled: " << publisher.stats.canceledOrders << "\n";
     std::cout << "Orders filled: " << publisher.stats.filledOrders << "\n";
+    std::cout << "Orders canceled: " << publisher.stats.canceledOrders << "\n";
+    std::cout << "Orders rejected: " << publisher.stats.rejectedOrders << "\n";
     std::cout << "Throughput: " << (NUM_ORDERS * 1000.0 / durationMs) << " orders/sec\n";
+
+    LatencyStats latencyStats;
+    for (int i = 0; i < NUM_ORDERS; i++)
+        latencyStats.record(publisher.receiveTimes[i] - gateway.requestTimes[i]);
+    latencyStats.print_stats();
 }

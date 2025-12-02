@@ -23,7 +23,7 @@ public:
         delete[] data;
     }
 
-    T* TryPut()
+    T* GetWriteIndex()
     {
         auto currHead = head.load(std::memory_order_relaxed);
         auto nextHead = currHead + 1;
@@ -33,28 +33,38 @@ public:
         if (nextHead == tail.load(std::memory_order_acquire))
             return nullptr;
 
-        head.store(nextHead, std::memory_order_release);
-
         return &data[currHead];
     }
 
-    T* TryPop()
+    void UpdateWriteIndex()
+    {
+        auto currHead = head.load(std::memory_order_relaxed);
+        auto nextHead = currHead + 1;
+        if (nextHead >= size)
+            nextHead = 0;
+        head.store(nextHead, std::memory_order_release);
+    }
+
+    T* GetReadIndex()
     {
         auto currTail = tail.load(std::memory_order_relaxed);
 
         if (currTail == head.load(std::memory_order_acquire))
             return nullptr;
 
-        auto nextTail = currTail + 1;
+        return &data[currTail];
+    }
+
+    void UpdateReadIndex()
+    {
+        auto nextTail = tail.load(std::memory_order_relaxed) + 1;
         if (nextTail >= size)
             nextTail = 0;
         tail.store(nextTail, std::memory_order_release);
-
-        return &data[currTail];
     }
 
     bool IsEmpty()
     {
-        return tail.load(std::memory_order_relaxed) == head.load(std::memory_order_relaxed);
+        return tail.load() == head.load();
     }
 };

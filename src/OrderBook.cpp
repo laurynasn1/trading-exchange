@@ -36,20 +36,22 @@ MarketDataEvent OrderBook::AddOrder(std::shared_ptr<Order> order)
     {
         .type = EventType::ORDER_ACKED,
         .orderId = order->orderId,
+        .requestId = order->orderId,
         .timestamp = Timer::rdtsc(),
         .price = order->price,
         .quantity = order->RemainingQuantity()
     };
 }
 
-MarketDataEvent OrderBook::CancelOrder(uint64_t orderId)
+MarketDataEvent OrderBook::CancelOrder(uint64_t targetOrderId, uint64_t requestId)
 {
-    auto it = orders.find(orderId);
+    auto it = orders.find(targetOrderId);
     if (it == orders.end())
         return MarketDataEvent
         {
             .type = EventType::ORDER_REJECTED,
-            .orderId = orderId,
+            .orderId = targetOrderId,
+            .requestId = requestId,
             .timestamp = Timer::rdtsc(),
             .rejectionReason = "Order not found"
         };
@@ -61,12 +63,13 @@ MarketDataEvent OrderBook::CancelOrder(uint64_t orderId)
     else
         RemoveOrder(order, asks);
 
-    orders.erase(orderId);
+    orders.erase(targetOrderId);
 
     return MarketDataEvent
     {
         .type = EventType::ORDER_CANCELLED,
         .orderId = order->orderId,
+        .requestId = requestId,
         .timestamp = Timer::rdtsc()
     };
 }
@@ -128,6 +131,7 @@ std::vector<MarketDataEvent> OrderBook::MatchAgainstBook(std::shared_ptr<Order> 
             events.push_back(MarketDataEvent {
                     .type = EventType::ORDER_FILLED,
                     .orderId = order->orderId,
+                    .requestId = order->orderId,
                     .timestamp = Timer::rdtsc(),
                     .tradeId = nextTradeId++,
                     .restingOrderId = resting->orderId,

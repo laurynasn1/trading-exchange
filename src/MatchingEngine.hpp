@@ -6,7 +6,6 @@
 
 #include "OrderBook.hpp"
 #include "SPSCQueue.hpp"
-#include "OutputPolicy.hpp"
 
 class MatchingEngine {
 private:
@@ -36,7 +35,7 @@ public:
     }
 
     void SubmitOrder(std::shared_ptr<Order> order);
-    bool CancelOrder(uint64_t order_id);
+    bool CancelOrder(uint64_t targetOrderId, uint64_t requestId = 0);
     OrderBook* GetBook(const std::string& symbol);
     void Clear();
 

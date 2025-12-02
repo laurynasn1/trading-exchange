@@ -53,7 +53,14 @@ struct Order
     }
 };
 
+struct CancelRequest
+{
+    uint64_t requestId;
+    uint64_t targetOrderId;
+    uint64_t timestamp;
+};
+
 struct OrderRequest
 {
-    std::variant<Order, uint64_t> data;
+    std::variant<Order, CancelRequest> data;
 };
