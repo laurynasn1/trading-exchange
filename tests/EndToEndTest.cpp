@@ -8,10 +8,10 @@
 #include "SPSCQueue.hpp"
 #include "LatencyStats.hpp"
 
-TEST(EndToEndTest, ThreeThreadPipeline)
+TEST(EndToEndTest, ThroughputTest)
 {
     const size_t NUM_ORDERS = 1'000'000;
-    const size_t QUEUE_SIZE = 100'000;
+    const size_t QUEUE_SIZE = 1'000'000;
     auto inputQueue = std::make_shared<SPSCQueue<OrderRequest>>(QUEUE_SIZE);
     auto outputQueue = std::make_shared<SPSCQueue<MarketDataEvent>>(QUEUE_SIZE);
 
@@ -19,7 +19,7 @@ TEST(EndToEndTest, ThreeThreadPipeline)
     MatchingEngine engine(inputQueue, [outputQueue](const auto & event) {
         MarketDataEvent* slot = nullptr;
         while ((slot = outputQueue->GetWriteIndex()) == nullptr)
-            std::this_thread::yield();
+            _mm_pause();
         *slot = event;
         outputQueue->UpdateWriteIndex();
     });
@@ -49,9 +49,49 @@ TEST(EndToEndTest, ThreeThreadPipeline)
     std::cout << "Orders canceled: " << publisher.stats.canceledOrders << "\n";
     std::cout << "Orders rejected: " << publisher.stats.rejectedOrders << "\n";
     std::cout << "Throughput: " << (NUM_ORDERS * 1000.0 / durationMs) << " orders/sec\n";
+}
+
+TEST(EndToEndTest, LatencyTest)
+{
+    const size_t NUM_ORDERS = 100'000;
+    const size_t QUEUE_SIZE = 100;
+    auto inputQueue = std::make_shared<SPSCQueue<OrderRequest>>(QUEUE_SIZE);
+    auto outputQueue = std::make_shared<SPSCQueue<MarketDataEvent>>(QUEUE_SIZE);
+
+    OrderGateway gateway(inputQueue, NUM_ORDERS);
+    MatchingEngine engine(inputQueue, [outputQueue](const auto & event) {
+        MarketDataEvent* slot = nullptr;
+        while ((slot = outputQueue->GetWriteIndex()) == nullptr)
+            _mm_pause();
+        *slot = event;
+        outputQueue->UpdateWriteIndex();
+    });
+    MarketDataPublisher publisher(outputQueue, NUM_ORDERS);
 
     LatencyStats latencyStats;
+
+    publisher.Start();
+    engine.Start();
+
     for (int i = 0; i < NUM_ORDERS; i++)
-        latencyStats.record(publisher.receiveTimes[i] - gateway.requestTimes[i]);
+    {
+        while (!gateway.SendRequest(i))
+            _mm_pause();
+
+        while (!publisher.HasProcessed(i))
+            _mm_pause();
+
+        if (i >= 10000) // Warmup
+            latencyStats.record(publisher.receiveTimes[i] - gateway.requestTimes[i]);
+    }
+
+    engine.Stop();
+    publisher.Stop();
+
+    std::cout << "Orders acked: " << publisher.stats.ackedOrders << "\n";
+    std::cout << "Orders filled: " << publisher.stats.filledOrders << "\n";
+    std::cout << "Orders canceled: " << publisher.stats.canceledOrders << "\n";
+    std::cout << "Orders rejected: " << publisher.stats.rejectedOrders << "\n";
+
     latencyStats.print_stats();
 }

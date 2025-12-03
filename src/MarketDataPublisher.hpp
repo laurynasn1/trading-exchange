@@ -6,6 +6,7 @@
 #include <iostream>
 #include <algorithm>
 #include <iomanip>
+#include <immintrin.h>
 
 class MarketDataPublisher {
 private:
@@ -18,7 +19,8 @@ public:
         : queue(queue_)
     {
         receiveTimes.resize(numRequests);
-        seenRequestIds.resize(numRequests);
+        for (int i = 0; i < numRequests; i++)
+            seenRequestIds.emplace_back(false);
     }
 
     ~MarketDataPublisher()
@@ -49,7 +51,7 @@ public:
 
             if (trade == nullptr)
             {
-                std::this_thread::yield();
+                _mm_pause();
                 continue;
             }
 
@@ -62,6 +64,17 @@ public:
         std::cout << "Market data publisher processed " << eventsProcessed << " events\n";
     }
 
+    bool HasProcessed(size_t index)
+    {
+        auto val = receiveTimes[index];
+        if (val != 0)
+        {
+            std::atomic_thread_fence(std::memory_order_acquire);
+            return true;
+        }
+        return false;
+    }
+
 private:
     void Publish(const MarketDataEvent& trade)
     {
@@ -69,6 +82,7 @@ private:
         {
             receiveTimes[trade.requestId] = Timer::rdtsc();
             seenRequestIds[trade.requestId] = true;
+            std::atomic_thread_fence(std::memory_order_release);
         }
 
         switch (trade.type)

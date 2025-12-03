@@ -1,6 +1,7 @@
 #include "MatchingEngine.hpp"
 #include "Timer.hpp"
 #include <stdexcept>
+#include <immintrin.h>
 
 void MatchingEngine::SubmitOrder(std::shared_ptr<Order> order)
 {
@@ -104,7 +105,7 @@ void MatchingEngine::Run()
 
         if (req == nullptr)
         {
-            std::this_thread::yield();
+            _mm_pause();
             continue;
         }
 

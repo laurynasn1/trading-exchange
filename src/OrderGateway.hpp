@@ -26,6 +26,7 @@ public:
         : queue(queue_)
     {
         GenerateRequests(numRequests);
+        requestTimes.resize(numRequests, 0);
     }
 
     ~OrderGateway()
@@ -35,7 +36,6 @@ public:
 
     void GenerateRequests(size_t numRequests)
     {
-        requestTimes.reserve(numRequests);
         requests.reserve(numRequests);
         activeOrderIds.reserve(numRequests / 2);
 
@@ -125,29 +125,38 @@ public:
             thread.join();
     }
 
+    bool SendRequest(size_t index)
+    {
+        if (index >= requests.size()) return false;
+
+        OrderRequest* slot = queue->GetWriteIndex();
+        if (slot == nullptr) return false;
+        *slot = requests[index];
+
+        requestTimes[index] = Timer::rdtsc();
+        queue->UpdateWriteIndex();
+        return true;
+    }
+
     void Run()
     {
         size_t sent = 0;
         auto start = std::chrono::steady_clock::now();
 
-        for (const auto& req : requests)
+        for (int i = 0; i < requests.size(); i++)
         {
             if (!running) break;
+            
+            while (!SendRequest(i))
+                _mm_pause();
 
-            OrderRequest* slot = nullptr;
-            while ((slot = queue->GetWriteIndex()) == nullptr)
-                std::this_thread::yield();
-            *slot = req;
-
-            requestTimes.push_back(Timer::rdtsc());
             sent++;
-            queue->UpdateWriteIndex();
         }
 
         auto end = std::chrono::steady_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-        std::cout << "Gateway sent " << sent << " requests in " << duration << "us\n";
+        std::cout << "Gateway sent " << sent << " requests in " << duration << " ms\n";
     }
 
 public:
