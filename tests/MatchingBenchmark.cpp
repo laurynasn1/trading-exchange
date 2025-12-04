@@ -11,24 +11,25 @@
 static void BM_InsertOrder(benchmark::State& state)
 {
     MatchingEngine engine;
-    uint64_t orderId = 1;
+    uint64_t orderId = 0;
 
     int delta = state.range(0);
 
     for (auto _ : state)
     {
-        auto order = std::make_shared<Order>(orderId, "AAPL", Side::SELL, OrderType::LIMIT, 100, 10000.00 + delta * 0.01);
+        auto order = std::make_shared<Order>(orderId, "AAPL", Side::SELL, OrderType::LIMIT, 100, orderId * delta * 0.01);
 
         uint64_t start = Timer::rdtsc();
         engine.SubmitOrder(order);
         uint64_t end = Timer::rdtsc();
 
         benchmark::DoNotOptimize(order);
-        state.SetIterationTime(Timer::cycles_to_ns(end - start) / 1e9);  // Convert to seconds
+        state.SetIterationTime(Timer::cycles_to_ns(end - start) / 1e9);
+        orderId++;
     }
 }
 
-BENCHMARK(BM_InsertOrder)->UseManualTime()->Arg(-1)->Arg(0)->Arg(1)->Iterations(10000000);
+BENCHMARK(BM_InsertOrder)->UseManualTime()->Arg(0)->Arg(1)->Iterations(10000000);
 
 static void BM_MatchSingle(benchmark::State& state)
 {
