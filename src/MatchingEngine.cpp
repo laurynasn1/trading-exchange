@@ -22,8 +22,18 @@ void MatchingEngine::SubmitOrder(std::shared_ptr<Order> order)
     auto book = GetOrCreateBook(order->symbol);
     auto events = book->MatchOrder(order);
     if (eventCallback)
-        for (const auto & event : events)
-            eventCallback(event);
+    {
+        if (events.empty())
+            eventCallback(MarketDataEvent{
+                .type = EventType::ORDER_REJECTED,
+                .orderId = order->orderId,
+                .requestId = order->orderId,
+                .rejectionReason = "Order was submitted but could not be filled"
+            });
+        else
+            for (const auto & event : events)
+                eventCallback(event);
+    }
 }
 
 bool MatchingEngine::CancelOrder(uint64_t targetOrderId, uint64_t requestId)

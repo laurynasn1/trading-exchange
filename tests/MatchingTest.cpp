@@ -176,9 +176,11 @@ TEST_F(MatchingEngineTest, FOKOrderRejected)
     auto market = std::make_shared<Order>(3, "AAPL", Side::BUY, OrderType::FOK, 201, 0.0);
     engine.SubmitOrder(market);
 
-    EXPECT_EQ(events.size(), 2);
+    EXPECT_EQ(events.size(), 3);
     EXPECT_EQ(events[0].orderId, 1);
     EXPECT_EQ(events[0].type, EventType::ORDER_ACKED);
     EXPECT_EQ(events[1].orderId, 2);
     EXPECT_EQ(events[1].type, EventType::ORDER_ACKED);
+    EXPECT_EQ(events[2].orderId, 3);
+    EXPECT_EQ(events[2].type, EventType::ORDER_REJECTED);
 }
