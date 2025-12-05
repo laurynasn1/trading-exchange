@@ -25,11 +25,15 @@ add_executable(matching_engine src/main.cpp)
 target_link_libraries(matching_engine MatchingEngineLib)
 
 enable_testing()
-
-add_executable(tests tests/MatchingTest.cpp tests/EndToEndTest.cpp)
-target_link_libraries(tests MatchingEngineLib GTest::gtest_main)
 include(GoogleTest)
-gtest_discover_tests(tests)
+
+add_executable(unit tests/MatchingTest.cpp)
+target_link_libraries(unit MatchingEngineLib GTest::gtest_main)
+gtest_discover_tests(unit)
 
 add_executable(bench tests/MatchingBenchmark.cpp)
 target_link_libraries(bench MatchingEngineLib benchmark::benchmark)
+
+add_executable(endtoend tests/EndToEndTest.cpp)
+target_link_libraries(endtoend MatchingEngineLib GTest::gtest_main)
+gtest_discover_tests(endtoend)
