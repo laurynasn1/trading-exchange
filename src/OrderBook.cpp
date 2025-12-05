@@ -4,7 +4,7 @@
 
 OrderBook::OrderBook(std::string symbol_) : symbol(std::move(symbol_))
 {
-    orders.reserve(10'000'000);
+    orders.reserve(1'000'000);
 }
 
 template<typename BookSide>
