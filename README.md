@@ -8,10 +8,20 @@ Simple limit order book in naive implementation: `std::map`, `std::unordered_map
 - Build: CMake
 - Testing: Google Test, Google Benchmark
 
+## Environment
+
+- Intel(R) Core(TM) i7 CPU 920 @ 2.67GHz
+- Debian GNU/Linux 12 (bookworm)
+- gcc (Debian 12.2.0-14+deb12u1) 12.2.0
+
 ## Functionality
 
 - Supports market, limit, IOC and FOK orders.
 - Supports `SubmitOrder` and `CancelOrder` operations.
+
+## Optimization
+
+My optimization journey can be found in [Optimization.md](https://github.com/laurynasn1/trading-exchange/blob/master/Optimization.md).
 
 ## Testing scenarios
 
