@@ -3,6 +3,8 @@
 #include <string>
 #include <cstdint>
 
+inline const size_t NUM_SYMBOLS = 50;
+
 inline std::unordered_map<std::string, uint8_t> LoadSymbolMap() {
     return {
         {"AAPL", 0},  {"MSFT", 1},  {"NVDA", 2},  {"GOOGL", 3}, {"AMZN", 4},

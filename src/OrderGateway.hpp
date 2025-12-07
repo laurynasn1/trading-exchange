@@ -95,7 +95,7 @@ private:
 
             OrderRequest req;
 
-            std::string symbol = GetSymbol(symbol_dist(gen));
+            uint8_t symbol = symbol_dist(gen);
 
             if (p < 0.10 && !activeOrderIds.empty())
             {
@@ -147,13 +147,6 @@ private:
         }
 
         std::cout << "Generated " << requests.size() << " requests\n";
-    }
-
-    std::string GetSymbol(int index)
-    {
-        auto it = symbolMap.begin();
-        std::advance(it, index);
-        return it->first;
     }
 
     void Run()

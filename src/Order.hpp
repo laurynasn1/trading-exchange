@@ -23,7 +23,7 @@ enum class OrderType
 struct Order
 {
     uint64_t orderId;
-    std::string symbol;
+    uint8_t symbolId;
     Side side;
     OrderType type;
     uint32_t quantity;
@@ -35,8 +35,8 @@ struct Order
 
     Order() {}
 
-    Order(uint64_t id, std::string sym, Side s, OrderType t, uint32_t qty, double p)
-        : orderId(id), symbol(std::move(sym)), side(s), type(t), quantity(qty), price(p)
+    Order(uint64_t id, uint8_t symId, Side s, OrderType t, uint32_t qty, double p)
+        : orderId(id), symbolId(symId), side(s), type(t), quantity(qty), price(p)
     {
         auto now = std::chrono::high_resolution_clock::now();
         timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();

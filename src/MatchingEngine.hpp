@@ -6,10 +6,12 @@
 
 #include "OrderBook.hpp"
 #include "SPSCQueue.hpp"
+#include "SymbolMap.hpp"
 
 class MatchingEngine {
 private:
-    std::unordered_map<std::string, std::unique_ptr<OrderBook>> books;
+    std::unordered_map<std::string, uint8_t> symbolMap;
+    std::array<std::unique_ptr<OrderBook>, NUM_SYMBOLS> books;
 
     std::shared_ptr<SPSCQueue<OrderRequest>> inputQueue;
     std::function<void(const MarketDataEvent&)> eventCallback;
@@ -17,17 +19,21 @@ private:
     std::thread thread;
     std::atomic<bool> running{ false };
 
-    OrderBook* GetOrCreateBook(const std::string& symbol);
     bool ValidateOrder(const Order& order, std::string& error);
 
 public:
-    MatchingEngine() = default;
+    MatchingEngine(std::shared_ptr<SPSCQueue<OrderRequest>> input, const std::function<void(const MarketDataEvent&)> & eventCallback_)
+        : symbolMap(LoadSymbolMap()), inputQueue(input), eventCallback(std::move(eventCallback_))
+    {
+        for (const auto & [symbol, id] : symbolMap)
+            books[id] = std::make_unique<OrderBook>(symbol);
+    }
 
     MatchingEngine(const std::function<void(const MarketDataEvent&)> & eventCallback_)
-        : eventCallback(std::move(eventCallback_)) {}
+        : MatchingEngine(nullptr, eventCallback) {}
 
-    MatchingEngine(std::shared_ptr<SPSCQueue<OrderRequest>> input, const std::function<void(const MarketDataEvent&)> & eventCallback_)
-        : inputQueue(input), eventCallback(std::move(eventCallback_)) {}
+    MatchingEngine()
+        : MatchingEngine(nullptr, [](const auto &){}) {}
 
     ~MatchingEngine()
     {
@@ -36,7 +42,7 @@ public:
 
     void SubmitOrder(std::shared_ptr<Order> order);
     bool CancelOrder(uint64_t targetOrderId, uint64_t requestId = 0);
-    OrderBook* GetBook(const std::string& symbol);
+    OrderBook* GetBook(uint8_t symbolId);
     void Clear();
 
     void Start();

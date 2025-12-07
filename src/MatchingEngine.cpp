@@ -19,7 +19,7 @@ void MatchingEngine::SubmitOrder(std::shared_ptr<Order> order)
         return;
     }
 
-    auto book = GetOrCreateBook(order->symbol);
+    auto book = GetBook(order->symbolId);
     auto events = book->MatchOrder(order);
     if (eventCallback)
     {
@@ -38,7 +38,7 @@ void MatchingEngine::SubmitOrder(std::shared_ptr<Order> order)
 
 bool MatchingEngine::CancelOrder(uint64_t targetOrderId, uint64_t requestId)
 {
-    for (auto& [symbol, book] : books)
+    for (auto & book : books)
     {
         auto event = book->CancelOrder(requestId, targetOrderId);
         if (eventCallback) eventCallback(event);
@@ -47,23 +47,9 @@ bool MatchingEngine::CancelOrder(uint64_t targetOrderId, uint64_t requestId)
     return false;
 }
 
-OrderBook* MatchingEngine::GetOrCreateBook(const std::string & symbol)
+OrderBook* MatchingEngine::GetBook(uint8_t symbolId)
 {
-    auto it = books.find(symbol);
-    if (it == books.end())
-    {
-        auto book = std::make_unique<OrderBook>(symbol);
-        auto ptr = book.get();
-        books[symbol] = std::move(book);
-        return ptr;
-    }
-    return it->second.get();
-}
-
-OrderBook* MatchingEngine::GetBook(const std::string & symbol)
-{
-    auto it = books.find(symbol);
-    return it == books.end() ? nullptr : it->second.get();
+    return books[symbolId].get();
 }
 
 bool MatchingEngine::ValidateOrder(const Order& order, std::string& error)
@@ -80,18 +66,13 @@ bool MatchingEngine::ValidateOrder(const Order& order, std::string& error)
         return false;
     }
 
-    if (order.symbol.empty())
-    {
-        error = "Symbol cannot be empty";
-        return false;
-    }
-
     return true;
 }
 
 void MatchingEngine::Clear()
 {
-    books.clear();
+    for (auto & book : books)
+        book->Clear();
 }
 
 void MatchingEngine::Start()
