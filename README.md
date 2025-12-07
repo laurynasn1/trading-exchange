@@ -27,7 +27,7 @@ Order insertion benchmarks:
 Order matching benchmarks:
 
 - `BM_MatchSingle` tests best case scenario of a matching order - when it is matched and filled with the first (top) order in the book.
-- `BM_MatchOrder/N` tests matching order when there are N price levels. In each variation total number of resting orders is 10'000, so there are 10'000 / N orders per price level.
+- `BM_MatchOrder/N` tests matching order when there are N price levels. In each variation total number of resting orders is 100, so there are 100 / N orders per price level.
 
 Order canceling benchmarks:
 
