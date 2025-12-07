@@ -29,7 +29,7 @@ static void BM_InsertOrder(benchmark::State& state)
     }
 }
 
-BENCHMARK(BM_InsertOrder)->UseManualTime()->Arg(0)->Arg(1)->Iterations(10000000);
+BENCHMARK(BM_InsertOrder)->UseManualTime()->Arg(0)->Arg(1)->Iterations(1000000);
 
 static void BM_MatchSingle(benchmark::State& state)
 {
@@ -59,7 +59,7 @@ static void BM_MatchOrder(benchmark::State& state)
 {
     MatchingEngine engine;
 
-    const int totalOrders = 10'000;
+    const int totalOrders = 100;
     int levelsToSweep = state.range(0);
     int ordersPerLevel = totalOrders / levelsToSweep;
     int quantityPerLevel = 10;
@@ -86,11 +86,9 @@ static void BM_MatchOrder(benchmark::State& state)
 
         state.SetIterationTime(Timer::cycles_to_ns(end - start) / 1e9);
     }
-
-    state.SetItemsProcessed(state.iterations());
 }
 
-BENCHMARK(BM_MatchOrder)->UseManualTime()->Arg(1)->Arg(100)->Arg(10000);
+BENCHMARK(BM_MatchOrder)->UseManualTime()->Arg(1)->Arg(10)->Arg(100);
 
 static void BM_CancelOrder(benchmark::State& state)
 {

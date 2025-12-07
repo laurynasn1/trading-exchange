@@ -88,7 +88,7 @@ private:
         {
             double p;
             // Pre-fill order books so that they are not empty
-            if (i < numRequests / 5)
+            if (i < numRequests / 10)
                 p = 1.0;
             else
                 p = type_dist(gen);

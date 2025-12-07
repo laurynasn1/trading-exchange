@@ -10,8 +10,8 @@
 
 TEST(EndToEndTest, ThroughputTest)
 {
-    const size_t NUM_ORDERS = 1'000'000;
-    const size_t QUEUE_SIZE = 1'000'000;
+    const size_t NUM_ORDERS = 2'000'000;
+    const size_t QUEUE_SIZE = 2'000'000;
     auto inputQueue = std::make_shared<SPSCQueue<OrderRequest>>(QUEUE_SIZE);
     auto outputQueue = std::make_shared<SPSCQueue<MarketDataEvent>>(QUEUE_SIZE);
 
@@ -32,11 +32,8 @@ TEST(EndToEndTest, ThroughputTest)
     gateway.Start();
 
     gateway.WaitUntilFinished();
-
     while (!inputQueue->IsEmpty());
-
     engine.Stop();
-
     while (!outputQueue->IsEmpty());
     publisher.Stop();
 
@@ -53,7 +50,7 @@ TEST(EndToEndTest, ThroughputTest)
 
 TEST(EndToEndTest, LatencyTest)
 {
-    const size_t NUM_ORDERS = 100'000;
+    const size_t NUM_ORDERS = 200'000;
     const size_t QUEUE_SIZE = 100;
     auto inputQueue = std::make_shared<SPSCQueue<OrderRequest>>(QUEUE_SIZE);
     auto outputQueue = std::make_shared<SPSCQueue<MarketDataEvent>>(QUEUE_SIZE);
