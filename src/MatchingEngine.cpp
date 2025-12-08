@@ -34,17 +34,20 @@ void MatchingEngine::SubmitOrder(std::shared_ptr<Order> order)
             for (const auto & event : events)
                 eventCallback(event);
     }
+
+    orderToSymbol[order->orderId] = order->symbolId;
 }
 
 bool MatchingEngine::CancelOrder(uint64_t targetOrderId, uint64_t requestId)
 {
-    for (auto & book : books)
-    {
-        auto event = book->CancelOrder(requestId, targetOrderId);
-        if (eventCallback) eventCallback(event);
-        return true;
-    }
-    return false;
+    auto symbol = orderToSymbol.find(targetOrderId);
+    if (symbol == orderToSymbol.end())
+        return false;
+
+    auto book = GetBook(symbol->second);
+    auto event = book->CancelOrder(targetOrderId, requestId);
+    if (eventCallback) eventCallback(event);
+    return true;
 }
 
 OrderBook* MatchingEngine::GetBook(uint8_t symbolId)

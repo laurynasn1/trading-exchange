@@ -103,7 +103,7 @@ private:
 
                 std::uniform_int_distribution<> cancel_dist(0, activeOrderIds.size() - 1);
                 size_t idx = cancel_dist(gen);
-                req.data = CancelRequest{ activeOrderIds[idx], i, Timer::rdtsc() };
+                req.data = CancelRequest{ i, activeOrderIds[idx], Timer::rdtsc() };
 
                 activeOrderIds[idx] = activeOrderIds.back();
                 activeOrderIds.pop_back();

@@ -13,29 +13,29 @@ Benchmark results:
 ```
 Benchmark                                                      Time             CPU   Iterations
 ------------------------------------------------------------------------------------------------
-BM_InsertOrder/0/iterations:1000000/manual_time             66.2 ns          144 ns      1000000
-BM_InsertOrder/1/iterations:1000000/manual_time              915 ns         1034 ns      1000000
-BM_MatchSingle/manual_time                                   237 ns          574 ns      2900058
-BM_MatchOrder/1/manual_time                                12698 ns        52832 ns        55914
-BM_MatchOrder/10/manual_time                               13534 ns        54510 ns        51397
-BM_MatchOrder/100/manual_time                              20394 ns        68628 ns        34378
-BM_CancelOrder/1/iterations:1000000/manual_time             40.0 ns         49.2 ns      1000000
-BM_CancelOrder/1000/iterations:1000000/manual_time          40.3 ns         49.5 ns      1000000
-BM_CancelOrder/1000000/iterations:1000000/manual_time       40.2 ns         49.5 ns      1000000
+BM_InsertOrder/0/iterations:1000000/manual_time             60.5 ns          133 ns      1000000
+BM_InsertOrder/1/iterations:1000000/manual_time              707 ns          843 ns      1000000
+BM_MatchSingle/manual_time                                   360 ns          775 ns      2261845
+BM_MatchOrder/1/manual_time                                12336 ns        44501 ns        55875
+BM_MatchOrder/10/manual_time                               13363 ns        48833 ns        52346
+BM_MatchOrder/100/manual_time                              19911 ns        61949 ns        35778
+BM_CancelOrder/1/iterations:1000000/manual_time              542 ns          551 ns      1000000
+BM_CancelOrder/1000/iterations:1000000/manual_time           669 ns          678 ns      1000000
+BM_CancelOrder/1000000/iterations:1000000/manual_time       1501 ns         1508 ns      1000000
 ```
 
 End-to-end latency:
 ```
-Min:           267 ns
-Mean:         1002 ns
-Median:       1025 ns
-P95:          1496 ns
-P99:          1843 ns
-P99.9:        3006 ns
-Max:         66988 ns
+Min:           423 ns
+Mean:         1108 ns
+Median:       1090 ns
+P95:          1655 ns
+P99:          2041 ns
+P99.9:        2783 ns
+Max:         54120 ns
 ```
 
-End-to-end throughput: 2000000 requests in 2469 ms (810045 orders/sec).
+End-to-end throughput: 2000000 requests in 2989 ms (669120 orders/sec).
 
 `perf stat` output for throughput test:
 ```
@@ -61,15 +61,15 @@ Since the list of stock symbols is known before trading, we can pre-allocate an 
 
 This optimization improved end-to-end tests by a little bit:
 ```
-Min:           295 ns
-Mean:          975 ns
-Median:        995 ns
-P95:          1447 ns
-P99:          1775 ns
-P99.9:        2626 ns
-Max:         65224 ns
+Min:           387 ns
+Mean:         1062 ns
+Median:       1059 ns
+P95:          1583 ns
+P99:          1939 ns
+P99.9:        2675 ns
+Max:         57599 ns
 
-Throughput: 922509 orders/sec
+Throughput: 774893 orders/sec
 ```
 
 Commit [a3f7f12](https://github.com/laurynasn1/trading-exchange/commit/a3f7f12deaaf0ee910a014e31ea037a240513888) denotes version after applying first optimization.

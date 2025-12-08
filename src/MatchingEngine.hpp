@@ -13,6 +13,8 @@ private:
     std::unordered_map<std::string, uint8_t> symbolMap;
     std::array<std::unique_ptr<OrderBook>, NUM_SYMBOLS> books;
 
+    std::unordered_map<uint64_t, uint8_t> orderToSymbol;
+
     std::shared_ptr<SPSCQueue<OrderRequest>> inputQueue;
     std::function<void(const MarketDataEvent&)> eventCallback;
 
@@ -25,12 +27,13 @@ public:
     MatchingEngine(std::shared_ptr<SPSCQueue<OrderRequest>> input, const std::function<void(const MarketDataEvent&)> & eventCallback_)
         : symbolMap(LoadSymbolMap()), inputQueue(input), eventCallback(std::move(eventCallback_))
     {
+        orderToSymbol.reserve(2'000'000);
         for (const auto & [symbol, id] : symbolMap)
             books[id] = std::make_unique<OrderBook>(symbol);
     }
 
     MatchingEngine(const std::function<void(const MarketDataEvent&)> & eventCallback_)
-        : MatchingEngine(nullptr, eventCallback) {}
+        : MatchingEngine(nullptr, eventCallback_) {}
 
     MatchingEngine()
         : MatchingEngine(nullptr, [](const auto &){}) {}
