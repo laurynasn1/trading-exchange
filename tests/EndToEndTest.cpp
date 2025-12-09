@@ -25,6 +25,10 @@ TEST(EndToEndTest, ThroughputTest)
     });
     MarketDataPublisher publisher(outputQueue, NUM_ORDERS);
 
+#ifdef PERFSTAT
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+#endif
+
     auto start = std::chrono::steady_clock::now();
 
     publisher.Start();

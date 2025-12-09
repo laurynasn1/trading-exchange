@@ -17,7 +17,7 @@ static void BM_InsertOrder(benchmark::State& state)
 
     for (auto _ : state)
     {
-        auto order = std::make_shared<Order>(orderId, 0, Side::SELL, OrderType::LIMIT, 100, orderId * delta * 0.01 + 0.01);
+        auto order = std::make_shared<Order>(orderId, 0, Side::SELL, OrderType::LIMIT, 100, orderId * delta + 1);
 
         uint64_t start = Timer::rdtsc();
         engine.SubmitOrder(order);
@@ -39,10 +39,10 @@ static void BM_MatchSingle(benchmark::State& state)
 
     for (auto _ : state)
     {
-        auto sell = std::make_shared<Order>(orderId++, 0, Side::SELL, OrderType::LIMIT, 100, 150.00);
+        auto sell = std::make_shared<Order>(orderId++, 0, Side::SELL, OrderType::LIMIT, 100, 15000);
         engine.SubmitOrder(sell);
 
-        auto buy = std::make_shared<Order>(orderId++, 0, Side::BUY, OrderType::LIMIT, 100, 150.00);
+        auto buy = std::make_shared<Order>(orderId++, 0, Side::BUY, OrderType::LIMIT, 100, 15000);
 
         uint64_t start = Timer::rdtsc();
         engine.SubmitOrder(buy);
@@ -73,12 +73,12 @@ static void BM_MatchOrder(benchmark::State& state)
         {
             for (int j = 0; j < ordersPerLevel; j++)
             {
-                auto order = std::make_shared<Order>(i * ordersPerLevel + j, 0, Side::SELL, OrderType::LIMIT, quantityPerLevel, 150.00 + (i) * 0.01);
+                auto order = std::make_shared<Order>(i * ordersPerLevel + j, 0, Side::SELL, OrderType::LIMIT, quantityPerLevel, 15000 + i);
                 engine.SubmitOrder(order);
             }
         }
 
-        auto buy = std::make_shared<Order>(buy_id++, 0, Side::BUY, OrderType::MARKET, totalQty, 0.0);
+        auto buy = std::make_shared<Order>(buy_id++, 0, Side::BUY, OrderType::MARKET, totalQty, 0);
 
         uint64_t start = Timer::rdtsc();
         engine.SubmitOrder(buy);
@@ -102,7 +102,7 @@ static void BM_CancelOrder(benchmark::State& state)
     {
         for (int j = 0; j < ordersPerLevel; j++)
         {
-            auto order = std::make_shared<Order>(i * ordersPerLevel + j, 0, Side::SELL, OrderType::LIMIT, 100, 150.00 + i * 0.01);
+            auto order = std::make_shared<Order>(i * ordersPerLevel + j, 0, Side::SELL, OrderType::LIMIT, 100, i + 1);
             engine.SubmitOrder(order);
             indices.push_back(i * ordersPerLevel + j);
         }
@@ -119,7 +119,7 @@ static void BM_CancelOrder(benchmark::State& state)
         uint64_t start = Timer::rdtsc();
         auto result = engine.CancelOrder(indices[index++]);
         uint64_t end = Timer::rdtsc();
-        
+
         benchmark::DoNotOptimize(result);
         state.SetIterationTime(Timer::cycles_to_ns(end - start) / 1e9);
     }

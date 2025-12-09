@@ -46,7 +46,6 @@ public:
     void SubmitOrder(std::shared_ptr<Order> order);
     bool CancelOrder(uint64_t targetOrderId, uint64_t requestId = 0);
     OrderBook* GetBook(uint8_t symbolId);
-    void Clear();
 
     void Start();
     void Stop();

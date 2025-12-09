@@ -77,12 +77,12 @@ private:
         std::random_device rd;
         std::mt19937 gen(42);
         std::uniform_real_distribution<> type_dist(0, 1);
-        std::uniform_real_distribution<> price_dist(149.00, 151.00);
+        std::uniform_int_distribution<> price_dist(14900, 15100);
         std::uniform_int_distribution<> qty_dist(100, 1000);
         std::uniform_int_distribution<> side_dist(0, 1);
         std::uniform_int_distribution<> symbol_dist(0, symbolMap.size() - 1);
 
-        double mid_price = 150.00;
+        uint32_t mid_price = 15000;
 
         for (size_t i = 0; i < numRequests; ++i)
         {
@@ -111,19 +111,19 @@ private:
             else if (p < 0.30)
             {
                 // 20% Market orders
-                req.data = Order(i, symbol, side_dist(gen) == 0 ? Side::BUY : Side::SELL, OrderType::MARKET, qty_dist(gen), 0.0);
+                req.data = Order(i, symbol, side_dist(gen) == 0 ? Side::BUY : Side::SELL, OrderType::MARKET, qty_dist(gen), 0);
             }
             else if (p < 0.60)
             {
                 // 30% Limit orders that match immediately
 
                 Side side = side_dist(gen) == 0 ? Side::BUY : Side::SELL;
-                double aggressive_price;
+                uint32_t aggressive_price;
 
                 if (side == Side::BUY)
-                    aggressive_price = mid_price + 0.05 + type_dist(gen) * 0.10;
+                    aggressive_price = mid_price + 5 + type_dist(gen) * 10;
                 else
-                    aggressive_price = mid_price - 0.05 - type_dist(gen) * 0.10;
+                    aggressive_price = mid_price - 5 - type_dist(gen) * 10;
 
                 req.data = Order(i, symbol, side, OrderType::LIMIT, qty_dist(gen), aggressive_price);
                 activeOrderIds.push_back(i);
@@ -133,12 +133,12 @@ private:
                 // 40% Limit orders that rest
 
                 Side side = side_dist(gen) == 0 ? Side::BUY : Side::SELL;
-                double resting_price;
+                uint32_t resting_price;
 
                 if (side == Side::BUY)
-                    resting_price = mid_price - 0.05 - type_dist(gen) * 0.50;
+                    resting_price = mid_price - 5 - type_dist(gen) * 50;
                 else
-                    resting_price = mid_price + 0.05 + type_dist(gen) * 0.50;
+                    resting_price = mid_price + 5 + type_dist(gen) * 50;
 
                 req.data = Order(i, symbol, side, OrderType::LIMIT, qty_dist(gen), resting_price);
                 activeOrderIds.push_back(i);

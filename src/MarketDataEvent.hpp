@@ -19,7 +19,7 @@ struct MarketDataEvent
 
     uint64_t tradeId;
     uint64_t restingOrderId;
-    double price;
+    uint32_t price;
     uint32_t quantity;
 
     std::string rejectionReason;

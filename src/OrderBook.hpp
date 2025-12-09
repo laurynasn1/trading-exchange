@@ -1,19 +1,32 @@
 #pragma once
 #include "Order.hpp"
 #include "MarketDataEvent.hpp"
-#include <map>
-#include <list>
+#include <array>
+#include <span>
 #include <memory>
 #include <unordered_map>
 #include <vector>
+
+static constexpr double MAX_PRICE = 10000.0;
+static constexpr double TICK_SIZE = 0.01;
+static constexpr size_t NUM_PRICE_LEVELS = MAX_PRICE / TICK_SIZE + 1;
+
+struct PriceLevel
+{
+    std::shared_ptr<Order> head = nullptr;
+    std::shared_ptr<Order> tail = nullptr;
+};
 
 class OrderBook
 {
 private:
     std::string symbol;
 
-    std::map<double, std::list<std::shared_ptr<Order>>, std::greater<double>> bids;
-    std::map<double, std::list<std::shared_ptr<Order>>> asks;
+    std::array<PriceLevel, NUM_PRICE_LEVELS> bids;
+    std::array<PriceLevel, NUM_PRICE_LEVELS> asks;
+
+    uint32_t maxBid = 0;
+    uint32_t minAsk = NUM_PRICE_LEVELS;
 
     std::unordered_map<uint64_t, std::shared_ptr<Order>> orders;
 
@@ -21,11 +34,9 @@ private:
 
     MarketDataEvent AddOrder(std::shared_ptr<Order> order);
 
-    template<typename BookSide>
-    std::vector<MarketDataEvent> MatchAgainstBook(std::shared_ptr<Order> order, BookSide& bookSide);
+    void MatchAgainstBook(std::shared_ptr<Order> order, std::span<PriceLevel> bookSide, uint32_t & topPrice, uint32_t endOfBook, char dir, bool shouldBeLess, std::vector<MarketDataEvent> & events);
 
-    template<typename BookSide>
-    bool CheckAvailableLiquidity(std::shared_ptr<Order> order, BookSide& bookSide);
+    bool CheckAvailableLiquidity(std::shared_ptr<Order> order, std::span<PriceLevel> bookSide, uint32_t topPrice, uint32_t endOfBook, char dir, bool shouldBeLess);
 
 public:
     OrderBook(std::string symbol_);
@@ -36,5 +47,4 @@ public:
 
     std::pair<double, double> GetTopOfBook() const;
     void PrintBook(int levels = 5) const;
-    void Clear();
 };

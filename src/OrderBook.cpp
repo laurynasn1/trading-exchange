@@ -7,30 +7,45 @@ OrderBook::OrderBook(std::string symbol_) : symbol(std::move(symbol_))
     orders.reserve(1'000'000);
 }
 
-template<typename BookSide>
-void RemoveOrder(std::shared_ptr<Order> order, BookSide & bookSide)
+std::shared_ptr<Order> RemoveOrder(std::shared_ptr<Order> order, PriceLevel & level)
 {
-    auto& orderList = bookSide[order->price];
+    if (order->prev) order->prev->next = order->next;
+    if (order->next) order->next->prev = order->prev;
 
-    orderList.erase(order->position);
-    if (orderList.empty())
-        bookSide.erase(order->price);
+    if (level.head == order) level.head = order->next;
+    if (level.tail == order) level.tail = order->prev;
+
+    auto nextOrder = order->next;
+    order->next = nullptr;
+    order->prev = nullptr;
+    return nextOrder;
 }
 
 MarketDataEvent OrderBook::AddOrder(std::shared_ptr<Order> order)
 {
     orders[order->orderId] = order;
 
-    if (order->side == Side::BUY)
+    PriceLevel & level = (order->side == Side::BUY ? bids[order->price] : asks[order->price]);
+
+    if (level.head == nullptr)
     {
-        bids[order->price].push_back(order);
-        order->position = std::prev(bids[order->price].end());
+        level.head = order;
+        level.tail = order;
+        order->next = nullptr;
+        order->prev = nullptr;
     }
     else
     {
-        asks[order->price].push_back(order);
-        order->position = std::prev(asks[order->price].end());
+        level.tail->next = order;
+        order->prev = level.tail;
+        order->next = nullptr;
+        level.tail = order;
     }
+
+    if (order->side == Side::BUY)
+        maxBid = std::max(maxBid, order->price);
+    else
+        minAsk = std::min(minAsk, order->price);
 
     return MarketDataEvent
     {
@@ -58,10 +73,8 @@ MarketDataEvent OrderBook::CancelOrder(uint64_t targetOrderId, uint64_t requestI
 
     auto order = it->second;
 
-    if (order->side == Side::BUY)
-        RemoveOrder(order, bids);
-    else
-        RemoveOrder(order, asks);
+    auto & level = (order->side == Side::BUY ? bids[order->price] : asks[order->price]);
+    RemoveOrder(order, level);
 
     orders.erase(targetOrderId);
 
@@ -77,20 +90,21 @@ MarketDataEvent OrderBook::CancelOrder(uint64_t targetOrderId, uint64_t requestI
 std::vector<MarketDataEvent> OrderBook::MatchOrder(std::shared_ptr<Order> order)
 {
     std::vector<MarketDataEvent> events;
+    events.reserve(1000);
 
     if (order->side == Side::BUY)
     {
-        if (order->type == OrderType::FOK && !CheckAvailableLiquidity(order, asks))
-            return {};
+        if (order->type == OrderType::FOK && !CheckAvailableLiquidity(order, asks, minAsk, NUM_PRICE_LEVELS, 1, false))
+            return events;
 
-        events = MatchAgainstBook(order, asks);
+        MatchAgainstBook(order, asks, minAsk, NUM_PRICE_LEVELS, 1, false, events);
     }
     else
     {
-        if (order->type == OrderType::FOK && !CheckAvailableLiquidity(order, bids))
-            return {};
+        if (order->type == OrderType::FOK && !CheckAvailableLiquidity(order, bids, maxBid, 0, -1, true))
+            return events;
 
-        events = MatchAgainstBook(order, bids);
+        MatchAgainstBook(order, bids, maxBid, 0, -1, true, events);
     }
 
     if (order->RemainingQuantity() > 0 && order->type == OrderType::LIMIT)
@@ -99,30 +113,24 @@ std::vector<MarketDataEvent> OrderBook::MatchOrder(std::shared_ptr<Order> order)
     return events;
 }
 
-template<typename BookSide>
-std::vector<MarketDataEvent> OrderBook::MatchAgainstBook(std::shared_ptr<Order> order, BookSide &bookSide)
+void OrderBook::MatchAgainstBook(std::shared_ptr<Order> order, std::span<PriceLevel> bookSide, uint32_t & topPrice, uint32_t endOfBook, char dir, bool shouldBeLess, std::vector<MarketDataEvent> & events)
 {
-    std::vector<MarketDataEvent> events;
-    events.reserve(1000);
-
-    bool isBuy = order->side == Side::BUY;
-
-    auto priceIt = bookSide.begin();
-    while (priceIt != bookSide.end() && order->RemainingQuantity() > 0)
+    while (topPrice != endOfBook && order->RemainingQuantity() > 0)
     {
-        double restingPrice = priceIt->first;
-
-        if (isBuy && order->price > 0 && restingPrice > order->price)
-            break;
-        if (!isBuy && order->price > 0 && restingPrice < order->price)
+        if (order->price > 0 && topPrice != order->price && (topPrice < order->price) == shouldBeLess)
             break;
 
-        auto &ordersAtPrice = priceIt->second;
-        auto restingIt = ordersAtPrice.begin();
-        while (restingIt != ordersAtPrice.end() && order->RemainingQuantity() > 0)
+        auto & level = bookSide[topPrice];
+
+        if (level.head == nullptr)
         {
-            auto resting = *restingIt;
+            topPrice += dir;
+            continue;
+        }
 
+        auto resting = level.head;
+        while (resting != nullptr && order->RemainingQuantity() > 0)
+        {
             uint32_t filledQty = std::min(order->RemainingQuantity(), resting->RemainingQuantity());
 
             order->filledQuantity += filledQty;
@@ -139,50 +147,54 @@ std::vector<MarketDataEvent> OrderBook::MatchAgainstBook(std::shared_ptr<Order> 
                     .quantity = filledQty
                 });
 
-            if (resting->RemainingQuantity() == 0)
+            if (resting->IsFilled())
             {
-                restingIt = ordersAtPrice.erase(restingIt);
                 orders.erase(resting->orderId);
+                resting = RemoveOrder(resting, level);
             }
             else
-                restingIt++;
+                resting = resting->next;
         }
 
-        if (ordersAtPrice.empty())
-            priceIt = bookSide.erase(priceIt);
-        else
-            priceIt++;
+        if (level.head == nullptr)
+            topPrice += dir;
     }
-
-    return events;
 }
 
-template<typename BookSide>
-bool OrderBook::CheckAvailableLiquidity(std::shared_ptr<Order> order, BookSide& bookSide)
+bool OrderBook::CheckAvailableLiquidity(std::shared_ptr<Order> order, std::span<PriceLevel> bookSide, uint32_t topPrice, uint32_t endOfBook, char dir, bool shouldBeLess)
 {
     uint32_t availableShares = 0;
-    bool isBuy = order->side == Side::BUY;
+    auto idx = topPrice;
 
-    for (auto priceIt = bookSide.begin(); priceIt != bookSide.end() && availableShares < order->quantity; priceIt++)
+    while (idx != endOfBook && availableShares < order->quantity)
     {
-        double restingPrice = priceIt->first;
-
-        if (isBuy && order->price > 0 && restingPrice > order->price)
-            break;
-        if (!isBuy && order->price > 0 && restingPrice < order->price)
+        if (order->price > 0 && idx != order->price && (idx < order->price) == shouldBeLess)
             break;
 
-        auto &ordersAtPrice = priceIt->second;
-        for (auto restingIt = ordersAtPrice.begin(); restingIt != ordersAtPrice.end() && availableShares < order->quantity; restingIt++)
-            availableShares += (*restingIt)->quantity;
+        auto & level = bookSide[idx];
+
+        if (level.head == nullptr)
+        {
+            idx += dir;
+            continue;
+        }
+
+        auto resting = level.head;
+        while (resting != nullptr && availableShares < order->quantity)
+        {
+            availableShares += resting->RemainingQuantity();
+            resting = resting->next;
+        }
+
+        idx += dir;
     }
     return availableShares >= order->quantity;
 }
 
 std::pair<double, double> OrderBook::GetTopOfBook() const
 {
-    double bestBid = bids.empty() ? 0.0 : bids.begin()->first;
-    double bestAsk = asks.empty() ? 0.0 : asks.begin()->first;
+    double bestBid = maxBid / 100.0;
+    double bestAsk = minAsk == NUM_PRICE_LEVELS ? 0.0 : minAsk / 100.0;
     return { bestBid, bestAsk };
 }
 
@@ -190,34 +202,45 @@ void OrderBook::PrintBook(int levels) const
 {
     std::cout << "=== Order Book: " << symbol << " ===\n";
 
-    auto ask_it = asks.rbegin();
-    for (int i = 0; i < levels && ask_it != asks.rend(); ++i, ++ask_it)
+    auto askIdx = minAsk;
+    for (int i = 0; i < levels && askIdx < NUM_PRICE_LEVELS; askIdx++)
     {
-        int total_qty = 0;
-        for (const auto& order : ask_it->second)
-            total_qty += order->RemainingQuantity();
+        int totalQty = 0;
+        auto & level = asks[askIdx];
+        if (level.head == nullptr)
+            continue;
 
-        std::cout << "  ASK: " << ask_it->first << " | " << total_qty << " shares\n";
+        i++;
+        auto order = level.head;
+        while (order != nullptr)
+        {
+            totalQty += order->RemainingQuantity();
+            order = order->next;
+        }
+
+        std::cout << "  ASK: " << askIdx / 100.0 << " | " << totalQty << " shares\n";
     }
     
     auto [bid, ask] = GetTopOfBook();
     std::cout << "  --- SPREAD: " << (ask - bid) << " ---\n";
 
-    auto bid_it = bids.begin();
-    for (int i = 0; i < levels && bid_it != bids.end(); ++i, ++bid_it)
+    auto bidIdx = maxBid;
+    for (int i = 0; i < levels && bidIdx > 0; bidIdx--)
     {
-        int total_qty = 0;
-        for (const auto& order : bid_it->second)
-            total_qty += order->RemainingQuantity();
+        int totalQty = 0;
+        auto & level = bids[bidIdx];
+        if (level.head == nullptr)
+            continue;
 
-        std::cout << "  BID: " << bid_it->first << " | " << total_qty << " shares\n";
+        i++;
+        auto order = level.head;
+        while (order != nullptr)
+        {
+            totalQty += order->RemainingQuantity();
+            order = order->next;
+        }
+
+        std::cout << "  BID: " << bidIdx / 100.0 << " | " << totalQty << " shares\n";
     }
     std::cout << "========================\n";
-}
-
-void OrderBook::Clear()
-{
-    bids.clear();
-    asks.clear();
-    orders.clear();
 }

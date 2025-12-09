@@ -72,12 +72,6 @@ bool MatchingEngine::ValidateOrder(const Order& order, std::string& error)
     return true;
 }
 
-void MatchingEngine::Clear()
-{
-    for (auto & book : books)
-        book->Clear();
-}
-
 void MatchingEngine::Start()
 {
     running = true;

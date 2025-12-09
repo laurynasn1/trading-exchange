@@ -27,15 +27,17 @@ struct Order
     Side side;
     OrderType type;
     uint32_t quantity;
-    double price;
+    uint32_t price;
     uint64_t timestamp;
 
     uint32_t filledQuantity = 0;
-    std::list<std::shared_ptr<Order>>::iterator position;
+
+    std::shared_ptr<Order> next = nullptr;
+    std::shared_ptr<Order> prev = nullptr;
 
     Order() {}
 
-    Order(uint64_t id, uint8_t symId, Side s, OrderType t, uint32_t qty, double p)
+    Order(uint64_t id, uint8_t symId, Side s, OrderType t, uint32_t qty, uint32_t p)
         : orderId(id), symbolId(symId), side(s), type(t), quantity(qty), price(p)
     {
         auto now = std::chrono::high_resolution_clock::now();
