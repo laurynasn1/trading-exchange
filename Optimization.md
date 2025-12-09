@@ -13,8 +13,8 @@ Benchmark results:
 ```
 Benchmark                                                      Time             CPU   Iterations
 ------------------------------------------------------------------------------------------------
-BM_InsertOrder/0/iterations:1000000/manual_time             60.5 ns          133 ns      1000000
-BM_InsertOrder/1/iterations:1000000/manual_time              707 ns          843 ns      1000000
+BM_InsertOrder/0/iterations:1000000/manual_time              397 ns          507 ns      1000000
+BM_InsertOrder/1/iterations:1000000/manual_time             1199 ns         1323 ns      1000000
 BM_MatchSingle/manual_time                                   360 ns          775 ns      2261845
 BM_MatchOrder/1/manual_time                                12336 ns        44501 ns        55875
 BM_MatchOrder/10/manual_time                               13363 ns        48833 ns        52346

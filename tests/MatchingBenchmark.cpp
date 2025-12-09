@@ -17,7 +17,7 @@ static void BM_InsertOrder(benchmark::State& state)
 
     for (auto _ : state)
     {
-        auto order = std::make_shared<Order>(orderId, 0, Side::SELL, OrderType::LIMIT, 100, orderId * delta * 0.01);
+        auto order = std::make_shared<Order>(orderId, 0, Side::SELL, OrderType::LIMIT, 100, orderId * delta * 0.01 + 0.01);
 
         uint64_t start = Timer::rdtsc();
         engine.SubmitOrder(order);
