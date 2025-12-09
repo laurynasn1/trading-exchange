@@ -73,3 +73,61 @@ Throughput: 774893 orders/sec
 ```
 
 Commit [a3f7f12](https://github.com/laurynasn1/trading-exchange/commit/a3f7f12deaaf0ee910a014e31ea037a240513888) denotes version after applying first optimization.
+
+# Optimization 2: Price-bucketed arrays instead of `std::map` and intrusive lists instead of `std::list`
+
+`std::map` is node-based and chasing pointers is cache-unfriendly. Since the price is very likely to stay all the time in some range, e.g. from 0 to 10000, we can create price level for each price point. To avoid `double` we can convert the price to cents or ticks. Converting price to integers will also avoid floating-point price comparisons.
+
+To achieve even better cache locality, we can use intrusive lists instead of `std::list`. Each order will have pointers to next and previous orders. The list will only have head and tail pointers.
+
+Here are the bechmark results with all of the above optimizations applied:
+```
+Benchmark                                                      Time             CPU   Iterations
+------------------------------------------------------------------------------------------------
+BM_InsertOrder/0/iterations:1000000/manual_time             82.2 ns          150 ns      1000000
+BM_InsertOrder/1/iterations:1000000/manual_time              334 ns          486 ns      1000000
+BM_MatchSingle/manual_time                                   314 ns          685 ns      2655560
+BM_MatchOrder/1/manual_time                                12122 ns        41930 ns        58709
+BM_MatchOrder/10/manual_time                               11999 ns        41742 ns        51977
+BM_MatchOrder/100/manual_time                              12356 ns        41760 ns        57136
+BM_CancelOrder/1/iterations:1000000/manual_time              856 ns          864 ns      1000000
+BM_CancelOrder/1000/iterations:1000000/manual_time           839 ns          847 ns      1000000
+BM_CancelOrder/1000000/iterations:1000000/manual_time        833 ns          841 ns      1000000
+```
+
+Order insertion at a fixed price point went from 397 ns to 82.2 ns (~4.8 times speedup), at different price points from 1199 ns to 334 ns (~3.6 times speedup).
+Matching order that goes through 100 price levels went from 19911 ns to 12356 ns (~1.6 times speedup).
+Order canceling at 1 and 1000 price levels slowed down a little bit but at 1000000 levels it sped up by ~1.8 times.
+
+End-to-end throughput went from 774893 orders/sec to 1291155 orders/sec (~1.7 times speedup).
+End-to-end latency is also better:
+```
+Min:           354 ns
+Mean:          813 ns
+Median:        718 ns
+P95:          1453 ns
+P99:          1817 ns
+P99.9:        2574 ns
+Max:         67281 ns
+```
+
+`perf stat` output:
+```
+    15,010,707,214      cycles                                                               (39.74%)
+    15,178,679,539      instructions                     #    1.01  insn per cycle           (49.81%)
+        75,982,568      cache-references                                                     (49.90%)
+        27,382,192      cache-misses                     #   36.037 % of all cache refs      (50.09%)
+     5,988,592,173      L1-dcache-loads                                                      (50.45%)
+       155,387,370      L1-dcache-load-misses            #    2.59% of all L1-dcache accesses  (50.45%)
+        56,215,562      LLC-loads                                                            (40.31%)
+        20,727,432      LLC-load-misses                  #   36.87% of all LL-cache accesses  (10.03%)
+     3,840,148,806      branches                                                             (19.96%)
+        18,129,858      branch-misses                    #    0.47% of all branches          (29.81%)
+               515      context-switches
+            33,900      page-faults
+```
+Even though cache miss rate is somewhat the same, there were fewer branch misprediction and LLC load misses which increased the overall throughput.
+
+Looking at `perf record` flamegraphs, there are still `std::unordered_map` and `std::shared_ptr>` overheads which can be eliminated.
+
+Commit [b46f7b2](https://github.com/laurynasn1/trading-exchange/commit/b46f7b2584f67afca490b37701cd308ab11391cd) denotes version after applying first two optimization.
