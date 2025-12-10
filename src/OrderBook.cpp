@@ -2,9 +2,9 @@
 #include "Timer.hpp"
 #include <iostream>
 
-OrderBook::OrderBook(std::string symbol_) : symbol(std::move(symbol_))
+OrderBook::OrderBook(std::string symbol_, size_t numMaxOrders) : symbol(std::move(symbol_))
 {
-    orders.reserve(1'000'000);
+    orders.resize(numMaxOrders, nullptr);
 }
 
 std::shared_ptr<Order> RemoveOrder(std::shared_ptr<Order> order, PriceLevel & level)
@@ -23,6 +23,9 @@ std::shared_ptr<Order> RemoveOrder(std::shared_ptr<Order> order, PriceLevel & le
 
 MarketDataEvent OrderBook::AddOrder(std::shared_ptr<Order> order)
 {
+    if (order->orderId >= orders.size())
+        throw std::runtime_error{ "Order id exceeds capacity" };
+
     orders[order->orderId] = order;
 
     PriceLevel & level = (order->side == Side::BUY ? bids[order->price] : asks[order->price]);
@@ -60,8 +63,7 @@ MarketDataEvent OrderBook::AddOrder(std::shared_ptr<Order> order)
 
 MarketDataEvent OrderBook::CancelOrder(uint64_t targetOrderId, uint64_t requestId)
 {
-    auto it = orders.find(targetOrderId);
-    if (it == orders.end())
+    if (orders[targetOrderId] == nullptr)
         return MarketDataEvent
         {
             .type = EventType::ORDER_REJECTED,
@@ -71,12 +73,12 @@ MarketDataEvent OrderBook::CancelOrder(uint64_t targetOrderId, uint64_t requestI
             .rejectionReason = "Order not found"
         };
 
-    auto order = it->second;
+    auto order = orders[targetOrderId];
 
     auto & level = (order->side == Side::BUY ? bids[order->price] : asks[order->price]);
     RemoveOrder(order, level);
 
-    orders.erase(targetOrderId);
+    orders[targetOrderId] = nullptr;
 
     return MarketDataEvent
     {
@@ -149,7 +151,7 @@ void OrderBook::MatchAgainstBook(std::shared_ptr<Order> order, std::span<PriceLe
 
             if (resting->IsFilled())
             {
-                orders.erase(resting->orderId);
+                orders[resting->orderId] = nullptr;
                 resting = RemoveOrder(resting, level);
             }
             else

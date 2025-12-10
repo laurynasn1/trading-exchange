@@ -22,7 +22,7 @@ TEST(EndToEndTest, ThroughputTest)
             _mm_pause();
         *slot = event;
         outputQueue->UpdateWriteIndex();
-    });
+    }, NUM_SYMBOLS, NUM_ORDERS);
     MarketDataPublisher publisher(outputQueue, NUM_ORDERS);
 
 #ifdef PERFSTAT
@@ -49,7 +49,7 @@ TEST(EndToEndTest, ThroughputTest)
     std::cout << "Orders filled: " << publisher.stats.filledOrders << "\n";
     std::cout << "Orders canceled: " << publisher.stats.canceledOrders << "\n";
     std::cout << "Orders rejected: " << publisher.stats.rejectedOrders << "\n";
-    std::cout << "Throughput: " << (NUM_ORDERS * 1000.0 / durationMs) << " orders/sec\n";
+    std::cout << "Throughput: " << std::fixed << (NUM_ORDERS * 1000.0 / durationMs) << " orders/sec\n";
 }
 
 TEST(EndToEndTest, LatencyTest)
@@ -66,7 +66,7 @@ TEST(EndToEndTest, LatencyTest)
             _mm_pause();
         *slot = event;
         outputQueue->UpdateWriteIndex();
-    });
+    }, NUM_SYMBOLS, NUM_ORDERS);
     MarketDataPublisher publisher(outputQueue, NUM_ORDERS);
 
     LatencyStats latencyStats;

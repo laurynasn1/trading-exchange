@@ -28,7 +28,7 @@ private:
     uint32_t maxBid = 0;
     uint32_t minAsk = NUM_PRICE_LEVELS;
 
-    std::unordered_map<uint64_t, std::shared_ptr<Order>> orders;
+    std::vector<std::shared_ptr<Order>> orders;
 
     uint64_t nextTradeId = 1;
 
@@ -39,7 +39,7 @@ private:
     bool CheckAvailableLiquidity(std::shared_ptr<Order> order, std::span<PriceLevel> bookSide, uint32_t topPrice, uint32_t endOfBook, char dir, bool shouldBeLess);
 
 public:
-    OrderBook(std::string symbol_);
+    OrderBook(std::string symbol_, size_t numMaxOrders);
 
     MarketDataEvent CancelOrder(uint64_t targetOrderId, uint64_t requestId = 0);
 

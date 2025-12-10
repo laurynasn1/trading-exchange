@@ -11,9 +11,9 @@
 class MatchingEngine {
 private:
     std::unordered_map<std::string, uint8_t> symbolMap;
-    std::array<std::unique_ptr<OrderBook>, NUM_SYMBOLS> books;
+    std::vector<std::unique_ptr<OrderBook>> books;
 
-    std::unordered_map<uint64_t, uint8_t> orderToSymbol;
+    std::vector<char> orderToSymbol;
 
     std::shared_ptr<SPSCQueue<OrderRequest>> inputQueue;
     std::function<void(const MarketDataEvent&)> eventCallback;
@@ -24,19 +24,20 @@ private:
     bool ValidateOrder(const Order& order, std::string& error);
 
 public:
-    MatchingEngine(std::shared_ptr<SPSCQueue<OrderRequest>> input, const std::function<void(const MarketDataEvent&)> & eventCallback_)
+    MatchingEngine(std::shared_ptr<SPSCQueue<OrderRequest>> input, const std::function<void(const MarketDataEvent&)> & eventCallback_, size_t numBooks, size_t maxNumOrders)
         : symbolMap(LoadSymbolMap()), inputQueue(input), eventCallback(std::move(eventCallback_))
     {
-        orderToSymbol.reserve(2'000'000);
-        for (const auto & [symbol, id] : symbolMap)
-            books[id] = std::make_unique<OrderBook>(symbol);
+        orderToSymbol.resize(maxNumOrders, -1);
+        auto it = symbolMap.begin();
+        for (int i = 0; i < numBooks && it != symbolMap.end(); i++, it++)
+            books.emplace_back(std::make_unique<OrderBook>(it->first, maxNumOrders));
     }
 
-    MatchingEngine(const std::function<void(const MarketDataEvent&)> & eventCallback_)
-        : MatchingEngine(nullptr, eventCallback_) {}
+    MatchingEngine(const std::function<void(const MarketDataEvent&)> & eventCallback_, size_t numBooks = 1, size_t maxNumOrders = 1000)
+        : MatchingEngine(nullptr, eventCallback_, numBooks, maxNumOrders) {}
 
-    MatchingEngine()
-        : MatchingEngine(nullptr, [](const auto &){}) {}
+    MatchingEngine(size_t numBooks = 1, size_t maxNumOrders = 50'000'000)
+        : MatchingEngine(nullptr, [](const auto &){}, numBooks, maxNumOrders) {}
 
     ~MatchingEngine()
     {

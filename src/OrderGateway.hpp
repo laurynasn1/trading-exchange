@@ -80,7 +80,7 @@ private:
         std::uniform_int_distribution<> price_dist(14900, 15100);
         std::uniform_int_distribution<> qty_dist(100, 1000);
         std::uniform_int_distribution<> side_dist(0, 1);
-        std::uniform_int_distribution<> symbol_dist(0, symbolMap.size() - 1);
+        std::uniform_int_distribution<> symbol_dist(0, NUM_SYMBOLS - 1);
 
         uint32_t mid_price = 15000;
 

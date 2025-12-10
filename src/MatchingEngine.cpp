@@ -40,11 +40,10 @@ void MatchingEngine::SubmitOrder(std::shared_ptr<Order> order)
 
 bool MatchingEngine::CancelOrder(uint64_t targetOrderId, uint64_t requestId)
 {
-    auto symbol = orderToSymbol.find(targetOrderId);
-    if (symbol == orderToSymbol.end())
+    if (orderToSymbol[targetOrderId] < 0)
         return false;
 
-    auto book = GetBook(symbol->second);
+    auto book = GetBook(orderToSymbol[targetOrderId]);
     auto event = book->CancelOrder(targetOrderId, requestId);
     if (eventCallback) eventCallback(event);
     return true;
@@ -52,6 +51,8 @@ bool MatchingEngine::CancelOrder(uint64_t targetOrderId, uint64_t requestId)
 
 OrderBook* MatchingEngine::GetBook(uint8_t symbolId)
 {
+    if (symbolId < 0 || symbolId >= books.size())
+        throw std::runtime_error{ "Invalid symbol id" };
     return books[symbolId].get();
 }
 

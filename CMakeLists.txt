@@ -3,7 +3,6 @@ project(MatchingEngine CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=native")
-set(CMAKE_BUILD_TYPE Release)
 
 include(FetchContent)
 FetchContent_Declare(googletest
