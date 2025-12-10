@@ -191,14 +191,14 @@ bool OrderBook::CheckAvailableLiquidity(std::shared_ptr<Order> order, std::span<
     return availableShares >= order->quantity;
 }
 
-std::pair<double, double> OrderBook::GetTopOfBook() const
+std::pair<uint32_t, uint32_t> OrderBook::GetTopOfBook()
 {
-    double bestBid = maxBid / 100.0;
-    double bestAsk = minAsk == NUM_PRICE_LEVELS ? 0.0 : minAsk / 100.0;
-    return { bestBid, bestAsk };
+    while (bids[maxBid].head == nullptr && maxBid > 0) maxBid--;
+    while (asks[minAsk].head == nullptr && minAsk < NUM_PRICE_LEVELS) minAsk++;
+    return { maxBid, minAsk };
 }
 
-void OrderBook::PrintBook(int levels) const
+void OrderBook::PrintBook(int levels)
 {
     std::cout << "=== Order Book: " << symbol << " ===\n";
 
@@ -218,9 +218,9 @@ void OrderBook::PrintBook(int levels) const
             order = order->next;
         }
 
-        std::cout << "  ASK: " << askIdx / 100.0 << " | " << totalQty << " shares\n";
+        std::cout << "  ASK: " << askIdx << " | " << totalQty << " shares\n";
     }
-    
+
     auto [bid, ask] = GetTopOfBook();
     std::cout << "  --- SPREAD: " << (ask - bid) << " ---\n";
 
@@ -240,7 +240,7 @@ void OrderBook::PrintBook(int levels) const
             order = order->next;
         }
 
-        std::cout << "  BID: " << bidIdx / 100.0 << " | " << totalQty << " shares\n";
+        std::cout << "  BID: " << bidIdx << " | " << totalQty << " shares\n";
     }
     std::cout << "========================\n";
 }

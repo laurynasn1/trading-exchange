@@ -45,6 +45,6 @@ public:
 
     std::vector<MarketDataEvent> MatchOrder(std::shared_ptr<Order> order);
 
-    std::pair<double, double> GetTopOfBook() const;
-    void PrintBook(int levels = 5) const;
+    std::pair<uint32_t, uint32_t> GetTopOfBook();
+    void PrintBook(int levels = 5);
 };
