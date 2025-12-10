@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <immintrin.h>
 
-void MatchingEngine::SubmitOrder(std::shared_ptr<Order> order)
+void MatchingEngine::SubmitOrder(Order* order)
 {
     std::string rejectionReason;
     if (!ValidateOrder(*order, rejectionReason))
@@ -98,9 +98,8 @@ void MatchingEngine::Run()
             continue;
         }
 
-        if (Order* orderRaw = std::get_if<Order>(&req->data))
+        if (Order* order = std::get_if<Order>(&req->data))
         {
-            auto order = std::make_shared<Order>(*orderRaw);
             SubmitOrder(order);
         }
         else if (CancelRequest* cancelReq = std::get_if<CancelRequest>(&req->data))

@@ -32,8 +32,8 @@ struct Order
 
     uint32_t filledQuantity = 0;
 
-    std::shared_ptr<Order> next = nullptr;
-    std::shared_ptr<Order> prev = nullptr;
+    Order* next = nullptr;
+    Order* prev = nullptr;
 
     Order() {}
 

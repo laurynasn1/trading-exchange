@@ -17,16 +17,16 @@ public:
 
 TEST_F(MatchingEngineTest, BasicLimitOrderMatching)
 {
-    auto sell = std::make_shared<Order>(1, 0, Side::SELL, OrderType::LIMIT, 100, 15000);
-    engine.SubmitOrder(sell);
+    Order sell{ 1, 0, Side::SELL, OrderType::LIMIT, 100, 15000 };
+    engine.SubmitOrder(&sell);
     EXPECT_EQ(events.size(), 1);
     EXPECT_EQ(events[0].orderId, 1);
     EXPECT_EQ(events[0].type, EventType::ORDER_ACKED);
     EXPECT_EQ(events[0].quantity, 100);
     EXPECT_EQ(events[0].price, 15000);
 
-    auto buy = std::make_shared<Order>(2, 0, Side::BUY, OrderType::LIMIT, 100, 15000);
-    engine.SubmitOrder(buy);
+    Order buy{ 2, 0, Side::BUY, OrderType::LIMIT, 100, 15000 };
+    engine.SubmitOrder(&buy);
     EXPECT_EQ(events.size(), 2);
     EXPECT_EQ(events[1].orderId, 2);
     EXPECT_EQ(events[1].type, EventType::ORDER_FILLED);
@@ -37,11 +37,11 @@ TEST_F(MatchingEngineTest, BasicLimitOrderMatching)
 
 TEST_F(MatchingEngineTest, PartialFill)
 {
-    auto sell = std::make_shared<Order>(1, 0, Side::SELL, OrderType::LIMIT, 200, 15000);
-    engine.SubmitOrder(sell);
+    Order sell{ 1, 0, Side::SELL, OrderType::LIMIT, 200, 15000 };
+    engine.SubmitOrder(&sell);
 
-    auto buy = std::make_shared<Order>(2, 0, Side::BUY, OrderType::LIMIT, 100, 15000);
-    engine.SubmitOrder(buy);
+    Order buy{ 2, 0, Side::BUY, OrderType::LIMIT, 100, 15000 };
+    engine.SubmitOrder(&buy);
 
     EXPECT_EQ(events.size(), 2);
     EXPECT_EQ(events[0].orderId, 1);
@@ -62,14 +62,14 @@ TEST_F(MatchingEngineTest, PartialFill)
 
 TEST_F(MatchingEngineTest, PriceTimePriority)
 {
-    auto sell1 = std::make_shared<Order>(1, 0, Side::SELL, OrderType::LIMIT, 100, 15000);
-    auto sell2 = std::make_shared<Order>(2, 0, Side::SELL, OrderType::LIMIT, 100, 15000);
+    Order sell1{ 1, 0, Side::SELL, OrderType::LIMIT, 100, 15000 };
+    Order sell2{ 2, 0, Side::SELL, OrderType::LIMIT, 100, 15000 };
 
-    engine.SubmitOrder(sell1);
-    engine.SubmitOrder(sell2);
+    engine.SubmitOrder(&sell1);
+    engine.SubmitOrder(&sell2);
 
-    auto buy = std::make_shared<Order>(3, 0, Side::BUY, OrderType::LIMIT, 50, 15000);
-    engine.SubmitOrder(buy);
+    Order buy{ 3, 0, Side::BUY, OrderType::LIMIT, 50, 15000 };
+    engine.SubmitOrder(&buy);
 
     EXPECT_EQ(events.size(), 3);
 
@@ -85,11 +85,14 @@ TEST_F(MatchingEngineTest, PriceTimePriority)
 
 TEST_F(MatchingEngineTest, MarketOrder)
 {
-    engine.SubmitOrder(std::make_shared<Order>(1, 0, Side::SELL, OrderType::LIMIT, 100, 15000));
-    engine.SubmitOrder(std::make_shared<Order>(2, 0, Side::SELL, OrderType::LIMIT, 100, 15005));
+    Order sell1{ 1, 0, Side::SELL, OrderType::LIMIT, 100, 15000 };
+    Order sell2{ 2, 0, Side::SELL, OrderType::LIMIT, 100, 15005 };
 
-    auto market = std::make_shared<Order>(3, 0, Side::BUY, OrderType::MARKET, 150, 0);
-    engine.SubmitOrder(market);
+    engine.SubmitOrder(&sell1);
+    engine.SubmitOrder(&sell2);
+
+    Order market{ 3, 0, Side::BUY, OrderType::MARKET, 150, 0 };
+    engine.SubmitOrder(&market);
 
     EXPECT_EQ(events.size(), 4);
 
@@ -111,12 +114,16 @@ TEST_F(MatchingEngineTest, MarketOrder)
 
 TEST_F(MatchingEngineTest, IOCOrder)
 {
-    engine.SubmitOrder(std::make_shared<Order>(1, 0, Side::SELL, OrderType::LIMIT, 100, 15000));
-    engine.SubmitOrder(std::make_shared<Order>(2, 0, Side::SELL, OrderType::LIMIT, 100, 15005));
-    engine.SubmitOrder(std::make_shared<Order>(3, 0, Side::SELL, OrderType::LIMIT, 100, 15010));
+    Order sell1{ 1, 0, Side::SELL, OrderType::LIMIT, 100, 15000 };
+    Order sell2{ 2, 0, Side::SELL, OrderType::LIMIT, 100, 15005 };
+    Order sell3{ 3, 0, Side::SELL, OrderType::LIMIT, 100, 15010 };
 
-    auto market = std::make_shared<Order>(4, 0, Side::BUY, OrderType::IOC, 250, 15005);
-    engine.SubmitOrder(market);
+    engine.SubmitOrder(&sell1);
+    engine.SubmitOrder(&sell2);
+    engine.SubmitOrder(&sell3);
+
+    Order market{ 4, 0, Side::BUY, OrderType::IOC, 250, 15005 };
+    engine.SubmitOrder(&market);
 
     EXPECT_EQ(events.size(), 5);
 
@@ -144,11 +151,14 @@ TEST_F(MatchingEngineTest, IOCOrder)
 
 TEST_F(MatchingEngineTest, FOKOrderAccepted)
 {
-    engine.SubmitOrder(std::make_shared<Order>(1, 0, Side::SELL, OrderType::LIMIT, 100, 15000));
-    engine.SubmitOrder(std::make_shared<Order>(2, 0, Side::SELL, OrderType::LIMIT, 100, 15005));
+    Order sell1{ 1, 0, Side::SELL, OrderType::LIMIT, 100, 15000 };
+    Order sell2{ 2, 0, Side::SELL, OrderType::LIMIT, 100, 15005 };
 
-    auto market = std::make_shared<Order>(3, 0, Side::BUY, OrderType::FOK, 200, 0);
-    engine.SubmitOrder(market);
+    engine.SubmitOrder(&sell1);
+    engine.SubmitOrder(&sell2);
+
+    Order market{ 3, 0, Side::BUY, OrderType::FOK, 200, 0 };
+    engine.SubmitOrder(&market);
 
     EXPECT_EQ(events.size(), 4);
 
@@ -170,11 +180,14 @@ TEST_F(MatchingEngineTest, FOKOrderAccepted)
 
 TEST_F(MatchingEngineTest, FOKOrderRejected)
 {
-    engine.SubmitOrder(std::make_shared<Order>(1, 0, Side::SELL, OrderType::LIMIT, 100, 15000));
-    engine.SubmitOrder(std::make_shared<Order>(2, 0, Side::SELL, OrderType::LIMIT, 100, 15005));
+    Order sell1{ 1, 0, Side::SELL, OrderType::LIMIT, 100, 15000 };
+    Order sell2{ 2, 0, Side::SELL, OrderType::LIMIT, 100, 15005 };
 
-    auto market = std::make_shared<Order>(3, 0, Side::BUY, OrderType::FOK, 201, 0);
-    engine.SubmitOrder(market);
+    engine.SubmitOrder(&sell1);
+    engine.SubmitOrder(&sell2);
+
+    Order market{ 3, 0, Side::BUY, OrderType::FOK, 201, 0 };
+    engine.SubmitOrder(&market);
 
     EXPECT_EQ(events.size(), 3);
     EXPECT_EQ(events[0].orderId, 1);

@@ -17,10 +17,10 @@ static void BM_InsertOrder(benchmark::State& state)
 
     for (auto _ : state)
     {
-        auto order = std::make_shared<Order>(orderId, 0, Side::SELL, OrderType::LIMIT, 100, orderId * delta + 1);
+        Order order{ orderId, 0, Side::SELL, OrderType::LIMIT, 100, orderId * delta + 1 };
 
         uint64_t start = Timer::rdtsc();
-        engine.SubmitOrder(order);
+        engine.SubmitOrder(&order);
         uint64_t end = Timer::rdtsc();
 
         benchmark::DoNotOptimize(order);
@@ -39,13 +39,13 @@ static void BM_MatchSingle(benchmark::State& state)
 
     for (auto _ : state)
     {
-        auto sell = std::make_shared<Order>(orderId++, 0, Side::SELL, OrderType::LIMIT, 100, 15000);
-        engine.SubmitOrder(sell);
+        Order sell{ orderId++, 0, Side::SELL, OrderType::LIMIT, 100, 15000 };
+        engine.SubmitOrder(&sell);
 
-        auto buy = std::make_shared<Order>(orderId++, 0, Side::BUY, OrderType::LIMIT, 100, 15000);
+        Order buy{ orderId++, 0, Side::BUY, OrderType::LIMIT, 100, 15000 };
 
         uint64_t start = Timer::rdtsc();
-        engine.SubmitOrder(buy);
+        engine.SubmitOrder(&buy);
         uint64_t end = Timer::rdtsc();
 
         benchmark::DoNotOptimize(buy);
@@ -73,15 +73,15 @@ static void BM_MatchOrder(benchmark::State& state)
         {
             for (int j = 0; j < ordersPerLevel; j++)
             {
-                auto order = std::make_shared<Order>(i * ordersPerLevel + j, 0, Side::SELL, OrderType::LIMIT, quantityPerLevel, 15000 + i);
-                engine.SubmitOrder(order);
+                Order sell{ i * ordersPerLevel + j, 0, Side::SELL, OrderType::LIMIT, quantityPerLevel, 15000 + i };
+                engine.SubmitOrder(&sell);
             }
         }
 
-        auto buy = std::make_shared<Order>(buy_id++, 0, Side::BUY, OrderType::MARKET, totalQty, 0);
+        Order buy{ buy_id++, 0, Side::BUY, OrderType::MARKET, totalQty, 0 };
 
         uint64_t start = Timer::rdtsc();
-        engine.SubmitOrder(buy);
+        engine.SubmitOrder(&buy);
         uint64_t end = Timer::rdtsc();
 
         state.SetIterationTime(Timer::cycles_to_ns(end - start) / 1e9);
@@ -102,8 +102,8 @@ static void BM_CancelOrder(benchmark::State& state)
     {
         for (int j = 0; j < ordersPerLevel; j++)
         {
-            auto order = std::make_shared<Order>(i * ordersPerLevel + j, 0, Side::SELL, OrderType::LIMIT, 100, i + 1);
-            engine.SubmitOrder(order);
+            Order order{ i * ordersPerLevel + j, 0, Side::SELL, OrderType::LIMIT, 100, i + 1 };
+            engine.SubmitOrder(&order);
             indices.push_back(i * ordersPerLevel + j);
         }
     }

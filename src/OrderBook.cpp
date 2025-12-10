@@ -2,13 +2,15 @@
 #include "Timer.hpp"
 #include <iostream>
 
-OrderBook::OrderBook(std::string symbol_, size_t numMaxOrders) : symbol(std::move(symbol_))
+OrderBook::OrderBook(std::string symbol_, size_t numMaxOrders) : symbol(std::move(symbol_)), orderPool(numMaxOrders)
 {
     orders.resize(numMaxOrders, nullptr);
 }
 
-std::shared_ptr<Order> RemoveOrder(std::shared_ptr<Order> order, PriceLevel & level)
+Order* OrderBook::RemoveOrder(Order* order, PriceLevel & level)
 {
+    orders[order->orderId] = nullptr;
+
     if (order->prev) order->prev->next = order->next;
     if (order->next) order->next->prev = order->prev;
 
@@ -18,13 +20,18 @@ std::shared_ptr<Order> RemoveOrder(std::shared_ptr<Order> order, PriceLevel & le
     auto nextOrder = order->next;
     order->next = nullptr;
     order->prev = nullptr;
+
+    orderPool.Deallocate(order);
     return nextOrder;
 }
 
-MarketDataEvent OrderBook::AddOrder(std::shared_ptr<Order> order)
+MarketDataEvent OrderBook::AddOrder(Order* orderToAdd)
 {
-    if (order->orderId >= orders.size())
+    if (orderToAdd->orderId >= orders.size())
         throw std::runtime_error{ "Order id exceeds capacity" };
+
+    Order* order = orderPool.Allocate();
+    *order = *orderToAdd;
 
     orders[order->orderId] = order;
 
@@ -78,8 +85,6 @@ MarketDataEvent OrderBook::CancelOrder(uint64_t targetOrderId, uint64_t requestI
     auto & level = (order->side == Side::BUY ? bids[order->price] : asks[order->price]);
     RemoveOrder(order, level);
 
-    orders[targetOrderId] = nullptr;
-
     return MarketDataEvent
     {
         .type = EventType::ORDER_CANCELLED,
@@ -89,7 +94,7 @@ MarketDataEvent OrderBook::CancelOrder(uint64_t targetOrderId, uint64_t requestI
     };
 }
 
-std::vector<MarketDataEvent> OrderBook::MatchOrder(std::shared_ptr<Order> order)
+std::vector<MarketDataEvent> OrderBook::MatchOrder(Order* order)
 {
     std::vector<MarketDataEvent> events;
     events.reserve(1000);
@@ -115,7 +120,7 @@ std::vector<MarketDataEvent> OrderBook::MatchOrder(std::shared_ptr<Order> order)
     return events;
 }
 
-void OrderBook::MatchAgainstBook(std::shared_ptr<Order> order, std::span<PriceLevel> bookSide, uint32_t & topPrice, uint32_t endOfBook, char dir, bool shouldBeLess, std::vector<MarketDataEvent> & events)
+void OrderBook::MatchAgainstBook(Order* order, std::span<PriceLevel> bookSide, uint32_t & topPrice, uint32_t endOfBook, char dir, bool shouldBeLess, std::vector<MarketDataEvent> & events)
 {
     while (topPrice != endOfBook && order->RemainingQuantity() > 0)
     {
@@ -150,10 +155,7 @@ void OrderBook::MatchAgainstBook(std::shared_ptr<Order> order, std::span<PriceLe
                 });
 
             if (resting->IsFilled())
-            {
-                orders[resting->orderId] = nullptr;
                 resting = RemoveOrder(resting, level);
-            }
             else
                 resting = resting->next;
         }
@@ -163,7 +165,7 @@ void OrderBook::MatchAgainstBook(std::shared_ptr<Order> order, std::span<PriceLe
     }
 }
 
-bool OrderBook::CheckAvailableLiquidity(std::shared_ptr<Order> order, std::span<PriceLevel> bookSide, uint32_t topPrice, uint32_t endOfBook, char dir, bool shouldBeLess)
+bool OrderBook::CheckAvailableLiquidity(Order* order, std::span<PriceLevel> bookSide, uint32_t topPrice, uint32_t endOfBook, char dir, bool shouldBeLess)
 {
     uint32_t availableShares = 0;
     auto idx = topPrice;

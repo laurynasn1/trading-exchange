@@ -1,6 +1,7 @@
 #pragma once
 #include "Order.hpp"
 #include "MarketDataEvent.hpp"
+#include "ObjectPool.hpp"
 #include <array>
 #include <span>
 #include <memory>
@@ -13,8 +14,8 @@ static constexpr size_t NUM_PRICE_LEVELS = MAX_PRICE / TICK_SIZE + 1;
 
 struct PriceLevel
 {
-    std::shared_ptr<Order> head = nullptr;
-    std::shared_ptr<Order> tail = nullptr;
+    Order* head = nullptr;
+    Order* tail = nullptr;
 };
 
 class OrderBook
@@ -28,22 +29,22 @@ private:
     uint32_t maxBid = 0;
     uint32_t minAsk = NUM_PRICE_LEVELS;
 
-    std::vector<std::shared_ptr<Order>> orders;
+    std::vector<Order*> orders;
+    ObjectPool<Order> orderPool;
 
     uint64_t nextTradeId = 1;
 
-    MarketDataEvent AddOrder(std::shared_ptr<Order> order);
+    Order* RemoveOrder(Order* order, PriceLevel & level);
+    MarketDataEvent AddOrder(Order* orderToAdd);
 
-    void MatchAgainstBook(std::shared_ptr<Order> order, std::span<PriceLevel> bookSide, uint32_t & topPrice, uint32_t endOfBook, char dir, bool shouldBeLess, std::vector<MarketDataEvent> & events);
-
-    bool CheckAvailableLiquidity(std::shared_ptr<Order> order, std::span<PriceLevel> bookSide, uint32_t topPrice, uint32_t endOfBook, char dir, bool shouldBeLess);
+    void MatchAgainstBook(Order* order, std::span<PriceLevel> bookSide, uint32_t & topPrice, uint32_t endOfBook, char dir, bool shouldBeLess, std::vector<MarketDataEvent> & events);
+    bool CheckAvailableLiquidity(Order* order, std::span<PriceLevel> bookSide, uint32_t topPrice, uint32_t endOfBook, char dir, bool shouldBeLess);
 
 public:
     OrderBook(std::string symbol_, size_t numMaxOrders);
 
     MarketDataEvent CancelOrder(uint64_t targetOrderId, uint64_t requestId = 0);
-
-    std::vector<MarketDataEvent> MatchOrder(std::shared_ptr<Order> order);
+    std::vector<MarketDataEvent> MatchOrder(Order* order);
 
     std::pair<uint32_t, uint32_t> GetTopOfBook();
     void PrintBook(int levels = 5);

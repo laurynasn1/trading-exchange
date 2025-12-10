@@ -28,6 +28,7 @@ public:
         : symbolMap(LoadSymbolMap()), inputQueue(input), eventCallback(std::move(eventCallback_))
     {
         orderToSymbol.resize(maxNumOrders, -1);
+        books.reserve(numBooks);
         auto it = symbolMap.begin();
         for (int i = 0; i < numBooks && it != symbolMap.end(); i++, it++)
             books.emplace_back(std::make_unique<OrderBook>(it->first, maxNumOrders));
@@ -44,7 +45,7 @@ public:
         Stop();
     }
 
-    void SubmitOrder(std::shared_ptr<Order> order);
+    void SubmitOrder(Order* order);
     bool CancelOrder(uint64_t targetOrderId, uint64_t requestId = 0);
     OrderBook* GetBook(uint8_t symbolId);
 
