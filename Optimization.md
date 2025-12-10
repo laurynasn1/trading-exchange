@@ -128,6 +128,41 @@ Max:         67281 ns
 ```
 Even though cache miss rate is somewhat the same, there were fewer branch misprediction and LLC load misses which increased the overall throughput.
 
-Looking at `perf record` flamegraphs, there are still `std::unordered_map` and `std::shared_ptr>` overheads which can be eliminated.
+Looking at `perf record` flamegraphs, there are still `std::unordered_map` and `std::shared_ptr` overheads which can be eliminated.
 
 Commit [b46f7b2](https://github.com/laurynasn1/trading-exchange/commit/b46f7b2584f67afca490b37701cd308ab11391cd) denotes version after applying first two optimization.
+
+# Optimization 3: Vector instead of `std::unordered_map` for order cancelation and removal
+
+If we know that order ids are in some defined range, we can use an array or `std::vector` instead of `std::unordered_map` to avoid hashing overhead.
+
+Benchmark results:
+```
+Benchmark                                                      Time             CPU   Iterations
+------------------------------------------------------------------------------------------------
+BM_InsertOrder/0/iterations:1000000/manual_time             70.7 ns          138 ns      1000000
+BM_InsertOrder/1/iterations:1000000/manual_time              226 ns          309 ns      1000000
+BM_MatchSingle/manual_time                                   149 ns          439 ns      4734127
+BM_MatchOrder/1/manual_time                                 7235 ns        24973 ns        96672
+BM_MatchOrder/10/manual_time                                7331 ns        25276 ns        85413
+BM_MatchOrder/100/manual_time                               7583 ns        25221 ns        90264
+BM_CancelOrder/1/iterations:1000000/manual_time              370 ns          380 ns      1000000
+BM_CancelOrder/1000/iterations:1000000/manual_time           369 ns          379 ns      1000000
+BM_CancelOrder/1000000/iterations:1000000/manual_time        374 ns          384 ns      1000000
+```
+
+Every benchmark improved, most notably matching and canceling benchmarks.
+
+End-to-end throughput: 1705029 orders/sec.
+End-to-end latency:
+```
+Min:           265 ns
+Mean:          621 ns
+Median:        547 ns
+P95:           879 ns
+P99:          1270 ns
+P99.9:        7443 ns
+Max:         56586 ns
+```
+
+Commit [ad6007e](https://github.com/laurynasn1/trading-exchange/commit/ad6007e5e236eb575b1566f13de2de32fd5e4fca) denotes version after applying all of the above optimizations.
