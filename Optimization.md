@@ -130,7 +130,7 @@ Even though cache miss rate is somewhat the same, there were fewer branch mispre
 
 Looking at `perf record` flamegraphs, there are still `std::unordered_map` and `std::shared_ptr` overheads which can be eliminated.
 
-Commit [b46f7b2](https://github.com/laurynasn1/trading-exchange/commit/b46f7b2584f67afca490b37701cd308ab11391cd) denotes version after applying first two optimization.
+Commit [b46f7b2](https://github.com/laurynasn1/trading-exchange/commit/b46f7b2584f67afca490b37701cd308ab11391cd) denotes version after applying first two optimizations.
 
 # Optimization 3: Vector instead of `std::unordered_map` for order cancelation and removal
 
@@ -166,3 +166,36 @@ Max:         56586 ns
 ```
 
 Commit [ad6007e](https://github.com/laurynasn1/trading-exchange/commit/ad6007e5e236eb575b1566f13de2de32fd5e4fca) denotes version after applying all of the above optimizations.
+
+# Optimization 4: Object pool and raw pointers
+
+`std::shared_ptr` has a quite significant overhead. Instead of letting C++ cleanup no longer used objects, we can use raw pointers and manage the memory ourselves. We will need our custom allocator and deallocator and an object pool (or memory pool) is a great structure for this. We will pre-allocate empty orders in memory and use them for custom allocation and deallocation.
+
+Results:
+```
+Benchmark                                                      Time             CPU   Iterations
+------------------------------------------------------------------------------------------------
+BM_InsertOrder/0/iterations:1000000/manual_time              126 ns          176 ns      1000000
+BM_InsertOrder/1/iterations:1000000/manual_time              111 ns          157 ns      1000000
+BM_MatchSingle/manual_time                                   109 ns          292 ns      6280596
+BM_MatchOrder/1/manual_time                                 2628 ns        15697 ns       267544
+BM_MatchOrder/10/manual_time                                2696 ns        16030 ns       260622
+BM_MatchOrder/100/manual_time                               2945 ns        16186 ns       237653
+BM_CancelOrder/1/iterations:1000000/manual_time              207 ns          216 ns      1000000
+BM_CancelOrder/1000/iterations:1000000/manual_time           209 ns          218 ns      1000000
+BM_CancelOrder/1000000/iterations:1000000/manual_time        268 ns          277 ns      1000000
+```
+
+Throughput: 2781641 orders/sec
+Latency:
+```
+Min:           259 ns
+Mean:          446 ns
+Median:        430 ns
+P95:           571 ns
+P99:           654 ns
+P99.9:         793 ns
+Max:         85148 ns
+```
+
+Commit [50d775f](https://github.com/laurynasn1/trading-exchange/commit/50d775f01090447c982277a6641eb37fcd3528ca) denotes version after applying all of the above optimizations.
