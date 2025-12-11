@@ -199,3 +199,36 @@ Max:         85148 ns
 ```
 
 Commit [50d775f](https://github.com/laurynasn1/trading-exchange/commit/50d775f01090447c982277a6641eb37fcd3528ca) denotes version after applying all of the above optimizations.
+
+# Optimization 5: Market data output policy instead of returning `std::vector`
+
+Instead of allocating and returning `std::vector<MarketDataEvent>` we can emit market events in-place according to the output policy of matching engine.
+
+Results:
+```
+Benchmark                                                      Time             CPU   Iterations
+------------------------------------------------------------------------------------------------
+BM_InsertOrder/0/iterations:1000000/manual_time             29.8 ns         80.4 ns      1000000
+BM_InsertOrder/1/iterations:1000000/manual_time             28.9 ns         77.8 ns      1000000
+BM_MatchSingle/iterations:10000000/manual_time              28.0 ns          116 ns     10000000
+BM_MatchOrder/1/manual_time                                 1066 ns         4867 ns       598592
+BM_MatchOrder/10/manual_time                                1070 ns         4991 ns       644399
+BM_MatchOrder/100/manual_time                               1355 ns         5529 ns       499433
+BM_CancelOrder/1/iterations:1000000/manual_time              197 ns          205 ns      1000000
+BM_CancelOrder/1000/iterations:1000000/manual_time           196 ns          205 ns      1000000
+BM_CancelOrder/1000000/iterations:1000000/manual_time        256 ns          265 ns      1000000
+```
+
+Throughput: 4219409 orders/sec
+Latency:
+```
+Min:           250 ns
+Mean:          405 ns
+Median:        387 ns
+P95:           520 ns
+P99:           602 ns
+P99.9:         741 ns
+Max:         49762 ns
+```
+
+Commit [69ea23e](https://github.com/laurynasn1/trading-exchange/commit/69ea23eaaf194577fc9a5ae1abf4208d886e6bfd) denotes version after applying all of the above optimizations.
