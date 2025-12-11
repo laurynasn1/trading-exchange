@@ -11,6 +11,7 @@
 #include "Order.hpp"
 #include "Timer.hpp"
 #include "SymbolMap.hpp"
+#include "Threading.hpp"
 
 class OrderGateway
 {
@@ -151,6 +152,7 @@ private:
 
     void Run()
     {
+        PinThread(5);
         size_t sent = 0;
         auto start = std::chrono::steady_clock::now();
 

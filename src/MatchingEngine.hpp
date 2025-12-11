@@ -9,6 +9,7 @@
 #include "SymbolMap.hpp"
 #include "OutputPolicy.hpp"
 #include "Timer.hpp"
+#include "Threading.hpp"
 
 template<typename OutputPolicy>
 class MatchingEngine {
@@ -112,6 +113,7 @@ public:
 
     void Run()
     {
+        PinThread(3);
         while (running)
         {
             OrderRequest* req = inputQueue->GetReadIndex();

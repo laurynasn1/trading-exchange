@@ -1,6 +1,8 @@
 #pragma once
 #include "SPSCQueue.hpp"
 #include "OrderBook.hpp"
+#include "Threading.hpp"
+
 #include <thread>
 #include <atomic>
 #include <iostream>
@@ -43,6 +45,7 @@ public:
 
     void Run()
     {
+        PinThread(6);
         uint64_t eventsProcessed = 0;
 
         while (running)
