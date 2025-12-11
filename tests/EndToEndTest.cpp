@@ -16,13 +16,8 @@ TEST(EndToEndTest, ThroughputTest)
     auto outputQueue = std::make_shared<SPSCQueue<MarketDataEvent>>(QUEUE_SIZE);
 
     OrderGateway gateway(inputQueue, NUM_ORDERS);
-    MatchingEngine engine(inputQueue, [outputQueue](const auto & event) {
-        MarketDataEvent* slot = nullptr;
-        while ((slot = outputQueue->GetWriteIndex()) == nullptr)
-            _mm_pause();
-        *slot = event;
-        outputQueue->UpdateWriteIndex();
-    }, NUM_SYMBOLS, NUM_ORDERS);
+    QueueOutputPolicy output(outputQueue);
+    MatchingEngine<QueueOutputPolicy> engine(inputQueue, output, NUM_SYMBOLS, NUM_ORDERS);
     MarketDataPublisher publisher(outputQueue, NUM_ORDERS);
 
 #ifdef PERFSTAT
@@ -60,13 +55,8 @@ TEST(EndToEndTest, LatencyTest)
     auto outputQueue = std::make_shared<SPSCQueue<MarketDataEvent>>(QUEUE_SIZE);
 
     OrderGateway gateway(inputQueue, NUM_ORDERS);
-    MatchingEngine engine(inputQueue, [outputQueue](const auto & event) {
-        MarketDataEvent* slot = nullptr;
-        while ((slot = outputQueue->GetWriteIndex()) == nullptr)
-            _mm_pause();
-        *slot = event;
-        outputQueue->UpdateWriteIndex();
-    }, NUM_SYMBOLS, NUM_ORDERS);
+    QueueOutputPolicy output(outputQueue);
+    MatchingEngine<QueueOutputPolicy> engine(inputQueue, output, NUM_SYMBOLS, NUM_ORDERS);
     MarketDataPublisher publisher(outputQueue, NUM_ORDERS);
 
     LatencyStats latencyStats;

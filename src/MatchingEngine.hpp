@@ -7,7 +7,10 @@
 #include "OrderBook.hpp"
 #include "SPSCQueue.hpp"
 #include "SymbolMap.hpp"
+#include "OutputPolicy.hpp"
+#include "Timer.hpp"
 
+template<typename OutputPolicy>
 class MatchingEngine {
 private:
     std::unordered_map<std::string, uint8_t> symbolMap;
@@ -16,16 +19,31 @@ private:
     std::vector<char> orderToSymbol;
 
     std::shared_ptr<SPSCQueue<OrderRequest>> inputQueue;
-    std::function<void(const MarketDataEvent&)> eventCallback;
+    OutputPolicy & output;
 
     std::thread thread;
     std::atomic<bool> running{ false };
 
-    bool ValidateOrder(const Order& order, std::string& error);
+    bool ValidateOrder(const Order& order, std::string& error)
+    {
+        if (order.quantity == 0)
+        {
+            error = "Quantity must be > 0";
+            return false;
+        }
+
+        if (order.type == OrderType::LIMIT && order.price <= 0)
+        {
+            error = "Limit order must have price > 0";
+            return false;
+        }
+
+        return true;
+    }
 
 public:
-    MatchingEngine(std::shared_ptr<SPSCQueue<OrderRequest>> input, const std::function<void(const MarketDataEvent&)> & eventCallback_, size_t numBooks, size_t maxNumOrders)
-        : symbolMap(LoadSymbolMap()), inputQueue(input), eventCallback(std::move(eventCallback_))
+    MatchingEngine(std::shared_ptr<SPSCQueue<OrderRequest>> input, OutputPolicy & output_, size_t numBooks, size_t maxNumOrders)
+        : symbolMap(LoadSymbolMap()), inputQueue(input), output(output_)
     {
         orderToSymbol.resize(maxNumOrders, -1);
         books.reserve(numBooks);
@@ -34,22 +52,86 @@ public:
             books.emplace_back(std::make_unique<OrderBook>(it->first, maxNumOrders));
     }
 
-    MatchingEngine(const std::function<void(const MarketDataEvent&)> & eventCallback_, size_t numBooks = 1, size_t maxNumOrders = 1000)
-        : MatchingEngine(nullptr, eventCallback_, numBooks, maxNumOrders) {}
-
-    MatchingEngine(size_t numBooks = 1, size_t maxNumOrders = 50'000'000)
-        : MatchingEngine(nullptr, [](const auto &){}, numBooks, maxNumOrders) {}
+    MatchingEngine(OutputPolicy & output_, size_t numBooks = 1, size_t maxNumOrders = 20'000'000)
+        : MatchingEngine(nullptr, output_, numBooks, maxNumOrders) {}
 
     ~MatchingEngine()
     {
         Stop();
     }
 
-    void SubmitOrder(Order* order);
-    bool CancelOrder(uint64_t targetOrderId, uint64_t requestId = 0);
-    OrderBook* GetBook(uint8_t symbolId);
+    void SubmitOrder(Order* order)
+    {
+        std::string rejectionReason;
+        if (!ValidateOrder(*order, rejectionReason))
+        {
+            output.OnMarketEvent(MarketDataEvent{
+                    .type = EventType::ORDER_REJECTED,
+                    .orderId = order->orderId,
+                    .requestId = order->orderId,
+                    .timestamp = Timer::rdtsc(),
+                    .rejectionReason = rejectionReason
+                });
+            return;
+        }
 
-    void Start();
-    void Stop();
-    void Run();
+        auto book = GetBook(order->symbolId);
+        book->MatchOrder(order, output);
+        orderToSymbol[order->orderId] = order->symbolId;
+    }
+
+    bool CancelOrder(uint64_t targetOrderId, uint64_t requestId = 0)
+    {
+        if (orderToSymbol[targetOrderId] < 0)
+            return false;
+
+        auto book = GetBook(orderToSymbol[targetOrderId]);
+        book->CancelOrder(targetOrderId, output, requestId);
+        return true;
+    }
+
+    OrderBook* GetBook(uint8_t symbolId)
+    {
+        if (symbolId < 0 || symbolId >= books.size())
+            throw std::runtime_error{ "Invalid symbol id" };
+        return books[symbolId].get();
+    }
+
+    void Start()
+    {
+        running = true;
+        thread = std::thread(&MatchingEngine::Run, this);
+    }
+
+    void Stop()
+    {
+        running = false;
+        if (thread.joinable())
+            thread.join();
+    }
+
+    void Run()
+    {
+        while (running)
+        {
+            OrderRequest* req = inputQueue->GetReadIndex();
+
+            if (req == nullptr)
+            {
+                _mm_pause();
+                continue;
+            }
+
+            if (Order* order = std::get_if<Order>(&req->data))
+            {
+                SubmitOrder(order);
+            }
+            else if (CancelRequest* cancelReq = std::get_if<CancelRequest>(&req->data))
+            {
+                CancelOrder(cancelReq->targetOrderId, cancelReq->requestId);
+            }
+
+            inputQueue->UpdateReadIndex();
+        }
+    }
 };

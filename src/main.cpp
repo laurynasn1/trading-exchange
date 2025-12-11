@@ -3,7 +3,8 @@
 
 int main()
 {
-    MatchingEngine engine;
+    NoOpOutputPolicy output;
+    MatchingEngine engine(output);
 
     Order order1{ 1, 0, Side::BUY, OrderType::LIMIT, 100, 15000 };
     Order order2{ 2, 0, Side::BUY, OrderType::LIMIT, 200, 14500 };

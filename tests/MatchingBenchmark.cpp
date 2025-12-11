@@ -10,14 +10,15 @@
 
 static void BM_InsertOrder(benchmark::State& state)
 {
-    MatchingEngine engine;
+    NoOpOutputPolicy output;
+    MatchingEngine engine(output);
     uint64_t orderId = 0;
 
     int delta = state.range(0);
 
     for (auto _ : state)
     {
-        Order order{ orderId, 0, Side::SELL, OrderType::LIMIT, 100, orderId * delta + 1 };
+        Order order{ orderId, 0, Side::SELL, OrderType::LIMIT, 100, (uint32_t) orderId * delta + 1 };
 
         uint64_t start = Timer::rdtsc();
         engine.SubmitOrder(&order);
@@ -29,11 +30,12 @@ static void BM_InsertOrder(benchmark::State& state)
     }
 }
 
-BENCHMARK(BM_InsertOrder)->UseManualTime()->Arg(0)->Arg(1)->Iterations(1000000);
+BENCHMARK(BM_InsertOrder)->UseManualTime()->Arg(1)->Iterations(1000000);
 
 static void BM_MatchSingle(benchmark::State& state)
 {
-    MatchingEngine engine;
+    NoOpOutputPolicy output;
+    MatchingEngine engine(output);
 
     uint64_t orderId = 1;
 
@@ -53,17 +55,18 @@ static void BM_MatchSingle(benchmark::State& state)
     }
 }
 
-BENCHMARK(BM_MatchSingle)->UseManualTime();
+BENCHMARK(BM_MatchSingle)->UseManualTime()->Iterations(10000000);
 
 static void BM_MatchOrder(benchmark::State& state)
 {
-    MatchingEngine engine;
+    NoOpOutputPolicy output;
+    MatchingEngine engine(output);
 
-    const int totalOrders = 100;
-    int levelsToSweep = state.range(0);
-    int ordersPerLevel = totalOrders / levelsToSweep;
-    int quantityPerLevel = 10;
-    int totalQty = levelsToSweep * ordersPerLevel * quantityPerLevel;
+    const size_t totalOrders = 100;
+    auto levelsToSweep = state.range(0);
+    auto ordersPerLevel = totalOrders / levelsToSweep;
+    uint32_t quantityPerLevel = 10;
+    uint32_t totalQty = levelsToSweep * ordersPerLevel * quantityPerLevel;
 
     uint64_t buy_id = 1000000;
 
@@ -73,7 +76,7 @@ static void BM_MatchOrder(benchmark::State& state)
         {
             for (int j = 0; j < ordersPerLevel; j++)
             {
-                Order sell{ i * ordersPerLevel + j, 0, Side::SELL, OrderType::LIMIT, quantityPerLevel, 15000 + i };
+                Order sell{ i * ordersPerLevel + j, 0, Side::SELL, OrderType::LIMIT, quantityPerLevel, 15000u + i };
                 engine.SubmitOrder(&sell);
             }
         }
@@ -92,17 +95,18 @@ BENCHMARK(BM_MatchOrder)->UseManualTime()->Arg(1)->Arg(10)->Arg(100);
 
 static void BM_CancelOrder(benchmark::State& state)
 {
-    MatchingEngine engine;
+    NoOpOutputPolicy output;
+    MatchingEngine engine(output);
 
-    int levels = state.range(0);
-    int ordersPerLevel = 1'000'000 / levels;
+    auto levels = state.range(0);
+    size_t ordersPerLevel = 1'000'000 / levels;
     std::vector<int> indices;
     indices.reserve(levels * ordersPerLevel);
     for (int i = 0; i < levels; ++i)
     {
         for (int j = 0; j < ordersPerLevel; j++)
         {
-            Order order{ i * ordersPerLevel + j, 0, Side::SELL, OrderType::LIMIT, 100, i + 1 };
+            Order order{ i * ordersPerLevel + j, 0, Side::SELL, OrderType::LIMIT, 100, (uint32_t) i + 1 };
             engine.SubmitOrder(&order);
             indices.push_back(i * ordersPerLevel + j);
         }

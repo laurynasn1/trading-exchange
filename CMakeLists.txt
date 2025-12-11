@@ -17,24 +17,24 @@ FetchContent_MakeAvailable(
         googletest
         googlebenchmark)
 
-add_library(MatchingEngineLib STATIC src/OrderBook.cpp src/MatchingEngine.cpp)
-target_include_directories(MatchingEngineLib PUBLIC src/ src/utils)
-
 add_executable(matching_engine src/main.cpp)
-target_link_libraries(matching_engine MatchingEngineLib)
+target_include_directories(matching_engine PUBLIC src/ src/utils/)
 
 enable_testing()
 include(GoogleTest)
 
 add_executable(unit tests/MatchingTest.cpp)
-target_link_libraries(unit MatchingEngineLib GTest::gtest_main)
+target_link_libraries(unit GTest::gtest_main)
+target_include_directories(unit PUBLIC src/ src/utils/)
 gtest_discover_tests(unit)
 
 add_executable(bench tests/MatchingBenchmark.cpp)
-target_link_libraries(bench MatchingEngineLib benchmark::benchmark)
+target_link_libraries(bench benchmark::benchmark)
+target_include_directories(bench PUBLIC src/ src/utils/)
 
 add_executable(endtoend tests/EndToEndTest.cpp)
-target_link_libraries(endtoend MatchingEngineLib GTest::gtest_main)
+target_link_libraries(endtoend GTest::gtest_main)
+target_include_directories(endtoend PUBLIC src/ src/utils/)
 gtest_discover_tests(endtoend)
 
 if ("${PERFSTAT}" STREQUAL "YES")
