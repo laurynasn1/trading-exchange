@@ -123,7 +123,7 @@ TEST_F(MatchingEngineTest, IOCOrder)
     Order market{ 4, 0, Side::BUY, OrderType::IOC, 250, 15005 };
     engine.SubmitOrder(&market);
 
-    EXPECT_EQ(output.events.size(), 5);
+    EXPECT_EQ(output.events.size(), 6);
 
     EXPECT_EQ(output.events[0].orderId, 1);
     EXPECT_EQ(output.events[0].type, EventType::ORDER_ACKED);
@@ -141,6 +141,9 @@ TEST_F(MatchingEngineTest, IOCOrder)
     EXPECT_EQ(output.events[4].type, EventType::ORDER_FILLED);
     EXPECT_EQ(output.events[4].restingOrderId, 2);
     EXPECT_EQ(output.events[4].quantity, 100);
+
+    EXPECT_EQ(output.events[5].orderId, 4);
+    EXPECT_EQ(output.events[5].type, EventType::ORDER_CANCELLED);
 
     auto book = engine.GetBook(0);
     auto [bid, ask] = book->GetTopOfBook();
@@ -193,5 +196,5 @@ TEST_F(MatchingEngineTest, FOKOrderRejected)
     EXPECT_EQ(output.events[1].orderId, 2);
     EXPECT_EQ(output.events[1].type, EventType::ORDER_ACKED);
     EXPECT_EQ(output.events[2].orderId, 3);
-    EXPECT_EQ(output.events[2].type, EventType::ORDER_REJECTED);
+    EXPECT_EQ(output.events[2].type, EventType::ORDER_CANCELLED);
 }

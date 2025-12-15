@@ -211,14 +211,30 @@ public:
         if (order->side == Side::BUY)
         {
             if (order->type == OrderType::FOK && !CheckAvailableLiquidity(order, asks, minAsk, NUM_PRICE_LEVELS, 1, false))
+            {
+                output.OnMarketEvent(MarketDataEvent{
+                    .type = EventType::ORDER_CANCELLED,
+                    .orderId = order->orderId,
+                    .requestId = order->orderId,
+                    .timestamp = Timer::rdtsc()
+                });
                 return;
+            }
 
             MatchAgainstBook(order, asks, minAsk, NUM_PRICE_LEVELS, 1, false, output);
         }
         else
         {
             if (order->type == OrderType::FOK && !CheckAvailableLiquidity(order, bids, maxBid, 0, -1, true))
+            {
+                output.OnMarketEvent(MarketDataEvent{
+                    .type = EventType::ORDER_CANCELLED,
+                    .orderId = order->orderId,
+                    .requestId = order->orderId,
+                    .timestamp = Timer::rdtsc()
+                });
                 return;
+            }
 
             MatchAgainstBook(order, bids, maxBid, 0, -1, true, output);
         }
