@@ -3,7 +3,6 @@
 #include "MarketDataEvent.hpp"
 #include "ObjectPool.hpp"
 #include "OutputPolicy.hpp"
-#include "Timer.hpp"
 
 #include <array>
 #include <span>
@@ -87,14 +86,7 @@ private:
         else
             minAsk = std::min(minAsk, order->price);
 
-        output.OnMarketEvent(MarketDataEvent{
-            .type = EventType::ORDER_ACKED,
-            .orderId = order->orderId,
-            .requestId = order->orderId,
-            .timestamp = Timer::rdtsc(),
-            .price = order->price,
-            .quantity = order->RemainingQuantity()
-        });
+        output.OnMarketEvent(MarketDataEvent(order->orderId, order->orderId, order->price, order->RemainingQuantity()));
     }
 
     template<typename OutputPolicy>
@@ -121,16 +113,7 @@ private:
                 order->filledQuantity += filledQty;
                 resting->filledQuantity += filledQty;
 
-                output.OnMarketEvent(MarketDataEvent{
-                        .type = EventType::ORDER_FILLED,
-                        .orderId = order->orderId,
-                        .requestId = order->orderId,
-                        .timestamp = Timer::rdtsc(),
-                        .tradeId = nextTradeId++,
-                        .restingOrderId = resting->orderId,
-                        .price = order->price,
-                        .quantity = filledQty
-                    });
+                output.OnMarketEvent(MarketDataEvent(order->orderId, order->orderId, nextTradeId++, resting->orderId, order->price, filledQty));
 
                 if (resting->IsFilled())
                     resting = RemoveOrder(resting, level);
@@ -182,13 +165,7 @@ public:
     {
         if (orders[targetOrderId] == nullptr)
         {
-            output.OnMarketEvent(MarketDataEvent{
-                .type = EventType::ORDER_REJECTED,
-                .orderId = targetOrderId,
-                .requestId = requestId,
-                .timestamp = Timer::rdtsc(),
-                .rejectionReason = RejectionType::ORDER_NOT_FOUND
-            });
+            output.OnMarketEvent(MarketDataEvent(targetOrderId, requestId, RejectionType::ORDER_NOT_FOUND));
             return;
         }
 
@@ -197,12 +174,7 @@ public:
         auto & level = (order->side == Side::BUY ? bids[order->price] : asks[order->price]);
         RemoveOrder(order, level);
 
-        output.OnMarketEvent(MarketDataEvent{
-            .type = EventType::ORDER_CANCELLED,
-            .orderId = order->orderId,
-            .requestId = requestId,
-            .timestamp = Timer::rdtsc()
-        });
+        output.OnMarketEvent(MarketDataEvent(order->orderId, requestId));
     }
 
     template<typename OutputPolicy>
@@ -212,12 +184,7 @@ public:
         {
             if (order->type == OrderType::FOK && !CheckAvailableLiquidity(order, asks, minAsk, NUM_PRICE_LEVELS, 1, false))
             {
-                output.OnMarketEvent(MarketDataEvent{
-                    .type = EventType::ORDER_CANCELLED,
-                    .orderId = order->orderId,
-                    .requestId = order->orderId,
-                    .timestamp = Timer::rdtsc()
-                });
+                output.OnMarketEvent(MarketDataEvent(order->orderId, order->orderId));
                 return;
             }
 
@@ -227,12 +194,7 @@ public:
         {
             if (order->type == OrderType::FOK && !CheckAvailableLiquidity(order, bids, maxBid, 0, -1, true))
             {
-                output.OnMarketEvent(MarketDataEvent{
-                    .type = EventType::ORDER_CANCELLED,
-                    .orderId = order->orderId,
-                    .requestId = order->orderId,
-                    .timestamp = Timer::rdtsc()
-                });
+                output.OnMarketEvent(MarketDataEvent(order->orderId, order->orderId));
                 return;
             }
 
@@ -244,12 +206,7 @@ public:
             if (order->type == OrderType::LIMIT)
                 AddOrder(order, output);
             else
-                output.OnMarketEvent(MarketDataEvent{
-                    .type = EventType::ORDER_CANCELLED,
-                    .orderId = order->orderId,
-                    .requestId = order->orderId,
-                    .timestamp = Timer::rdtsc()
-                });
+                output.OnMarketEvent(MarketDataEvent(order->orderId, order->orderId));
         }
     }
 

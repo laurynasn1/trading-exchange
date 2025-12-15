@@ -5,6 +5,7 @@
 #include <list>
 #include <memory>
 #include <variant>
+#include "Timer.hpp"
 
 enum class Side
 {
@@ -38,11 +39,7 @@ struct Order
     Order() {}
 
     Order(uint64_t id, uint8_t symId, Side s, OrderType t, uint32_t qty, uint32_t p)
-        : orderId(id), symbolId(symId), side(s), type(t), quantity(qty), price(p)
-    {
-        auto now = std::chrono::high_resolution_clock::now();
-        timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
-    }
+        : orderId(id), symbolId(symId), side(s), type(t), quantity(qty), price(p), timestamp(Timer::rdtsc()) {}
 
     uint32_t RemainingQuantity() const
     {

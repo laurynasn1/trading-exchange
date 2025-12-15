@@ -1,14 +1,11 @@
 #pragma once
 
-#include <unordered_map>
 #include <thread>
-#include <functional>
 
 #include "OrderBook.hpp"
 #include "SPSCQueue.hpp"
 #include "SymbolMap.hpp"
 #include "OutputPolicy.hpp"
-#include "Timer.hpp"
 #include "Threading.hpp"
 
 template<typename OutputPolicy>
@@ -63,13 +60,7 @@ public:
         RejectionType rejection = ValidateOrder(*order);
         if (rejection > RejectionType::NONE)
         {
-            output.OnMarketEvent(MarketDataEvent{
-                    .type = EventType::ORDER_REJECTED,
-                    .orderId = order->orderId,
-                    .requestId = order->orderId,
-                    .timestamp = Timer::rdtsc(),
-                    .rejectionReason = rejection
-                });
+            output.OnMarketEvent(MarketDataEvent(order->orderId, order->orderId, rejection));
             return;
         }
 

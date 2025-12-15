@@ -10,13 +10,13 @@
 
 struct NoOpOutputPolicy
 {
-    void OnMarketEvent(const MarketDataEvent & event) {}
+    void OnMarketEvent(const MarketDataEvent && event) {}
 };
 
 struct VectorOutputPolicy
 {
     std::vector<MarketDataEvent> events;
-    void OnMarketEvent(const MarketDataEvent & event)
+    void OnMarketEvent(const MarketDataEvent && event)
     {
         events.emplace_back(event);
     }
@@ -29,7 +29,7 @@ struct QueueOutputPolicy
     QueueOutputPolicy(std::shared_ptr<SPSCQueue<MarketDataEvent>> queue_)
         : queue(queue_) {}
 
-    void OnMarketEvent(const MarketDataEvent & event)
+    void OnMarketEvent(const MarketDataEvent && event)
     {
         MarketDataEvent* slot = nullptr;
         while ((slot = queue->GetWriteIndex()) == nullptr)
