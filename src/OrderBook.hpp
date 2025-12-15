@@ -134,8 +134,6 @@ private:
 
                 if (resting->IsFilled())
                     resting = RemoveOrder(resting, level);
-                else
-                    resting = resting->next;
             }
 
             if (level.head == nullptr)
@@ -180,7 +178,7 @@ public:
     }
 
     template<typename OutputPolicy>
-    void CancelOrder(uint64_t targetOrderId, OutputPolicy & output, uint64_t requestId)
+    void CancelOrder(uint64_t targetOrderId, uint64_t requestId, OutputPolicy & output)
     {
         if (orders[targetOrderId] == nullptr)
         {
@@ -189,7 +187,7 @@ public:
                 .orderId = targetOrderId,
                 .requestId = requestId,
                 .timestamp = Timer::rdtsc(),
-                .rejectionReason = "Order not found"
+                .rejectionReason = RejectionType::ORDER_NOT_FOUND
             });
             return;
         }

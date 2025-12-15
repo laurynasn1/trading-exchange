@@ -25,21 +25,15 @@ private:
     std::thread thread;
     std::atomic<bool> running{ false };
 
-    bool ValidateOrder(const Order& order, std::string& error)
+    RejectionType ValidateOrder(const Order& order)
     {
         if (order.quantity == 0)
-        {
-            error = "Quantity must be > 0";
-            return false;
-        }
+            return RejectionType::INVALID_QUANTITY;
 
         if (order.type == OrderType::LIMIT && order.price <= 0)
-        {
-            error = "Limit order must have price > 0";
-            return false;
-        }
+            return RejectionType::INVALID_PRICE;
 
-        return true;
+        return RejectionType::NONE;
     }
 
 public:
@@ -63,15 +57,18 @@ public:
 
     void SubmitOrder(Order* order)
     {
-        std::string rejectionReason;
-        if (!ValidateOrder(*order, rejectionReason))
+        if (order->orderId >= orderToSymbol.size())
+            throw std::runtime_error{ "Order id exceeds capacity" };
+
+        RejectionType rejection = ValidateOrder(*order);
+        if (rejection > RejectionType::NONE)
         {
             output.OnMarketEvent(MarketDataEvent{
                     .type = EventType::ORDER_REJECTED,
                     .orderId = order->orderId,
                     .requestId = order->orderId,
                     .timestamp = Timer::rdtsc(),
-                    .rejectionReason = rejectionReason
+                    .rejectionReason = rejection
                 });
             return;
         }
@@ -83,11 +80,14 @@ public:
 
     bool CancelOrder(uint64_t targetOrderId, uint64_t requestId = 0)
     {
+        if (targetOrderId >= orderToSymbol.size())
+            throw std::runtime_error{ "Order id exceeds capacity" };
+
         if (orderToSymbol[targetOrderId] < 0)
             return false;
 
         auto book = GetBook(orderToSymbol[targetOrderId]);
-        book->CancelOrder(targetOrderId, output, requestId);
+        book->CancelOrder(targetOrderId, requestId, output);
         return true;
     }
 

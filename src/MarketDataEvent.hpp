@@ -10,6 +10,14 @@ enum class EventType
     ORDER_REJECTED
 };
 
+enum class RejectionType
+{
+    NONE,
+    INVALID_QUANTITY,
+    INVALID_PRICE,
+    ORDER_NOT_FOUND,
+};
+
 struct MarketDataEvent
 {
     EventType type;
@@ -22,5 +30,5 @@ struct MarketDataEvent
     uint32_t price;
     uint32_t quantity;
 
-    std::string rejectionReason;
+    RejectionType rejectionReason;
 };

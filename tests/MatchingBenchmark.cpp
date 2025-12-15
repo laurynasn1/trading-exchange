@@ -30,14 +30,14 @@ static void BM_InsertOrder(benchmark::State& state)
     }
 }
 
-BENCHMARK(BM_InsertOrder)->UseManualTime()->Arg(1)->Iterations(1000000);
+BENCHMARK(BM_InsertOrder)->UseManualTime()->Arg(0)->Arg(1)->Iterations(1000000);
 
 static void BM_MatchSingle(benchmark::State& state)
 {
     NoOpOutputPolicy output;
     MatchingEngine engine(output);
 
-    uint64_t orderId = 1;
+    uint64_t orderId = 0;
 
     for (auto _ : state)
     {
