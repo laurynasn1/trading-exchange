@@ -232,3 +232,53 @@ Max:         49762 ns
 ```
 
 Commit [69ea23e](https://github.com/laurynasn1/trading-exchange/commit/69ea23eaaf194577fc9a5ae1abf4208d886e6bfd) denotes version after applying all of the above optimizations.
+
+# Small adjustments and final results
+
+Added thread pinning to each thread to run on different processor cores. Rejection reason as `std::string` was replaced with RejectionType enum to avoid unnecessary allocation. There were some changes in order insertion benchmarks. Adding sequentially increasing prices is actually not the best benchmark as CPU predicts and prefetches next prices into cache thus making it very fast. Better benchmark is to add random price points, therefore instead of `BM_InsertOrder` benchmarks there will be `BM_InsertOrderFixed`, which inserts all orders at the same price, and `BM_InsertOrderRandom`, which inserts orders at random prices.
+
+Final benchmark results:
+```
+Benchmark                                                      Time             CPU   Iterations
+------------------------------------------------------------------------------------------------
+BM_InsertOrderFixed/iterations:1000000/manual_time          24.2 ns         53.4 ns      1000000
+BM_InsertOrderRandom/iterations:1000000/manual_time         90.8 ns          118 ns      1000000
+BM_MatchSingle/iterations:10000000/manual_time              24.1 ns         69.6 ns     10000000
+BM_MatchOrder/1/manual_time                                 1138 ns         3170 ns       624784
+BM_MatchOrder/10/manual_time                                1158 ns         3231 ns       608336
+BM_MatchOrder/100/manual_time                               1400 ns         3477 ns       502689
+BM_CancelOrder/1/iterations:1000000/manual_time              196 ns          205 ns      1000000
+BM_CancelOrder/1000/iterations:1000000/manual_time           198 ns          207 ns      1000000
+BM_CancelOrder/1000000/iterations:1000000/manual_time        263 ns          273 ns      1000000
+```
+
+Final end-to-end tests results:
+Throughput: 4310344 orders/sec
+Latency:
+```
+Min:           182 ns
+Mean:          334 ns
+Median:        321 ns
+P95:           449 ns
+P99:           538 ns
+P99.9:         643 ns
+Max:         60069 ns
+```
+
+`perf stat` output:
+```
+     3,715,818,121      cycles                                                               (39.46%)
+     2,750,415,162      instructions                     #    0.74  insn per cycle           (49.94%)
+        43,759,966      cache-references                                                     (50.54%)
+         6,858,021      cache-misses                     #   15.672 % of all cache refs      (51.13%)
+     1,197,954,048      L1-dcache-loads                                                      (51.93%)
+        72,573,188      L1-dcache-load-misses            #    6.06% of all L1-dcache accesses  (52.47%)
+        28,280,075      LLC-loads                                                            (40.95%)
+         2,729,238      LLC-load-misses                  #    9.65% of all LL-cache accesses  (9.63%)
+       659,278,714      branches                                                             (20.00%)
+        10,713,541      branch-misses                    #    1.63% of all branches          (29.58%)
+               137      context-switches
+            31,259      page-faults
+```
+
+Commit [cf46003](https://github.com/laurynasn1/trading-exchange/commit/cf46003de7b712bfb8602924d81881913a6e7e4a) denotes the final version after applying all optimizations.

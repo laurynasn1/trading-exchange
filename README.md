@@ -1,10 +1,8 @@
 # Low-Latency Limit Order Book in C++
 
-Simple limit order book in naive implementation: `std::map`, `std::unordered_map`, `std::shared_ptr` and etc. Will be optimized to achieve lower latency and higher throughput.
-
 ## Tech stack
 
-- Language: C++17
+- Language: C++20
 - Build: CMake
 - Testing: Google Test, Google Benchmark
 
@@ -16,12 +14,35 @@ Simple limit order book in naive implementation: `std::map`, `std::unordered_map
 
 ## Functionality
 
-- Supports market, limit, IOC and FOK orders.
 - Supports `SubmitOrder` and `CancelOrder` operations.
+- Supports market, limit, IOC and FOK orders.
+- Prices from $0.01 to $10000.00 (1 to 1000000 cents).
+- 50 stock symbols.
+
+## Architecture
+
+- Price-bucketed arrays for O(1) price -> orders lookup.
+- Array for O(1) orderId -> order lookup.
+- Intrusive linked lists for better cache locality.
+- Object pool for zero allocations on hot path.
+- Lock-free queues between components (ring buffer).
+- Compile-time polymorphism for zero-copy output.
 
 ## Optimization
 
 My optimization journey can be found in [Optimization.md](https://github.com/laurynasn1/trading-exchange/blob/master/Optimization.md).
+
+## Performance
+| Metric | Value |
+|--------|-------|
+| Min Latency | 182ns |
+| Mean Latency | 334ns |
+| Median Latency | 321ns |
+| P95 Latency | 449ns |
+| P99 Latency | 538ns |
+| P99.9 Latency | 643ns |
+| Max Latency | 60µs |
+| Throughput | 4.3M orders/sec |
 
 ## Testing scenarios
 
@@ -31,8 +52,8 @@ These benchmarks test only the matching engine module.
 
 Order insertion benchmarks:
 
-- `BM_InsertOrder/0` tests order insertion at a fixed price point.
-- `BM_InsertOrder/1` tests order insertion at an increasing price point.
+- `BM_InsertOrderFixed` tests order insertion at a fixed price point.
+- `BM_InsertOrderRandom` tests order insertion at random price points.
 
 Order matching benchmarks:
 
@@ -56,3 +77,12 @@ Mock order gateway pre-generates various random operations with different probab
 Mock market data publisher reads market data events and updates statistics: orders acked, orders filled, orders canceled and orders rejected.
 
 There are 2 end-to-end tests: throughput and latency. Throughput test fires all orders at once and measures how long it took to process them all. Meanwhile latency test sends orders one by one, waiting for it to complete and records the latency.
+
+## Build and Run
+
+```bash
+cmake -Bbuild -DCMAKE_BUILD_TYPE=Release
+make -C build/ -j
+./build/bench
+./build/endtoend
+```
