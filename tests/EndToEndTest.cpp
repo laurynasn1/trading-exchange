@@ -21,7 +21,7 @@ TEST(EndToEndTest, ThroughputTest)
     MarketDataPublisher publisher(outputQueue, NUM_ORDERS);
 
 #ifdef PERFSTAT
-    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 #endif
 
     auto start = std::chrono::steady_clock::now();
@@ -45,6 +45,10 @@ TEST(EndToEndTest, ThroughputTest)
     std::cout << "Orders canceled: " << publisher.stats.canceledOrders << "\n";
     std::cout << "Orders rejected: " << publisher.stats.rejectedOrders << "\n";
     std::cout << "Throughput: " << std::fixed << (NUM_ORDERS * 1000.0 / durationMs) << " orders/sec\n";
+
+#ifdef PERFSTAT
+    std::quick_exit(0);
+#endif
 }
 
 TEST(EndToEndTest, LatencyTest)
