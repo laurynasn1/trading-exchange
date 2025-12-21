@@ -1,25 +1,27 @@
 #pragma once
-#include <unordered_map>
+#include <array>
 #include <string>
-#include <cstdint>
 
-inline const size_t NUM_SYMBOLS = 50;
+constexpr size_t NUM_SYMBOLS = 50;
 
-inline std::unordered_map<std::string, uint8_t> LoadSymbolMap() {
-    return {
-        {"AAPL", 0},  {"MSFT", 1},  {"NVDA", 2},  {"GOOGL", 3}, {"AMZN", 4},
-        {"META", 5},  {"TSLA", 6},  {"AMD", 7},   {"INTC", 8},  {"NFLX", 9},
+constexpr std::array<std::string_view, NUM_SYMBOLS> SYMBOLS = {
+    "AAPL", "MSFT", "NVDA", "GOOGL", "AMZN",
+    "META", "TSLA", "AMD", "INTC", "NFLX",
 
-        {"JPM", 10},  {"BAC", 11},  {"WFC", 12},  {"C", 13},    {"GS", 14},
-        {"MS", 15},   {"BLK", 16},  {"V", 17},    {"MA", 18},   {"PYPL", 19},
+    "JPM", "BAC", "WFC", "C", "GS",
+    "MS", "BLK", "V", "MA", "PYPL",
 
-        {"WMT", 20},  {"TGT", 21},  {"COST", 22}, {"HD", 23},   {"MCD", 24},
-        {"SBUX", 25}, {"KO", 26},   {"PEP", 27},  {"PG", 28},   {"NKE", 29},
+    "WMT", "TGT", "COST", "HD", "MCD",
+    "SBUX", "KO", "PEP", "PG", "NKE",
 
-        {"XOM", 30},  {"CVX", 31},  {"GE", 32},   {"BA", 33},   {"CAT", 34},
-        {"UNP", 35},  {"UPS", 36},  {"F", 37},    {"GM", 38},   {"DE", 39},
+    "XOM", "CVX", "GE", "BA", "CAT",
+    "UNP", "UPS", "F", "GM", "DE",
 
-        {"JNJ", 40},  {"PFE", 41},  {"MRK", 42},  {"ABBV", 43}, {"LLY", 44},
-        {"UNH", 45},  {"CVS", 46},  {"BMY", 47},  {"AMGN", 48}, {"GILD", 49}
-    };
+    "JNJ", "PFE", "MRK", "ABBV", "LLY",
+    "UNH", "CVS", "BMY", "AMGN", "GILD"
+};
+
+constexpr std::string_view IdToSymbol(uint8_t id)
+{
+    return SYMBOLS[id];
 }

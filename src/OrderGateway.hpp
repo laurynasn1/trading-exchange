@@ -20,14 +20,12 @@ private:
     std::vector<OrderRequest> requests;
     std::vector<uint64_t> activeOrderIds;
 
-    std::unordered_map<std::string, uint8_t> symbolMap;
-
     std::thread thread;
     std::atomic<bool> running{ false };
 
 public:
     OrderGateway(std::shared_ptr<SPSCQueue<OrderRequest>> queue_, size_t numRequests)
-        : queue(queue_), symbolMap(LoadSymbolMap())
+        : queue(queue_)
     {
         GenerateRequests(numRequests);
         requestTimes.resize(numRequests, 0);
