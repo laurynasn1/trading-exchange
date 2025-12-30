@@ -107,12 +107,19 @@ void HandleTradeMessage(TradeMsg* msg)
 void ProcessMessages(int sock)
 {
     char buf[MAX_PACKET_SIZE];
+    uint64_t seqNumber = 1;
     while (true)
     {
         int bytesRead = recvfrom(sock, buf, sizeof(buf), 0, nullptr, nullptr);
-        char messageType = buf[8];
+        ItchHeader* header = reinterpret_cast<ItchHeader*>(buf);
 
-        switch (messageType)
+        uint64_t headerSeqNumber = be64toh(header->sequenceNumber);
+        if (headerSeqNumber != seqNumber)
+        {
+            std::cout << "Sequence number mismatch: got " << headerSeqNumber << ", expected " << seqNumber << "\n";
+        }
+
+        switch (header->messageType)
         {
         case 'A':
             HandleOrderAdd(reinterpret_cast<OrderAddMsg*>(buf));
@@ -131,6 +138,8 @@ void ProcessMessages(int sock)
         default:
             break;
         }
+
+        seqNumber = headerSeqNumber + 1;
     }
 }
 
