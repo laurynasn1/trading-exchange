@@ -1,37 +1,32 @@
-#include "MatchingEngine.hpp"
 #include <iostream>
+#include <memory>
+
+#include "MatchingEngine.hpp"
+#include "OrderGateway.hpp"
+#include "MarketDataPublisher.hpp"
 
 int main()
 {
-    NoOpOutputPolicy output;
-    MatchingEngine engine(output);
+    const size_t NUM_ORDERS = 1000;
+    const size_t QUEUE_SIZE = 1000;
+    auto inputQueue = std::make_shared<SPSCQueue<OrderRequest>>(QUEUE_SIZE);
+    auto outputQueue = std::make_shared<SPSCQueue<MarketDataEvent>>(QUEUE_SIZE);
 
-    Order order1{ 1, 0, Side::BUY, OrderType::LIMIT, 100, 15000 };
-    Order order2{ 2, 0, Side::BUY, OrderType::LIMIT, 200, 14500 };
-    Order order3{ 3, 0, Side::BUY, OrderType::LIMIT, 200, 14000 };
-    Order order4{ 4, 0, Side::BUY, OrderType::LIMIT, 200, 13800 };
+    OrderGateway gateway(inputQueue, NUM_ORDERS);
+    QueueOutputPolicy output(outputQueue);
+    MatchingEngine<QueueOutputPolicy> engine(inputQueue, output, NUM_SYMBOLS, NUM_ORDERS);
+    UDPTransmitter transmitter;
+    MarketDataPublisher publisher(outputQueue, transmitter, NUM_ORDERS);
 
-    Order order5{ 5, 0, Side::SELL, OrderType::LIMIT, 150, 15200 };
-    Order order6{ 6, 0, Side::SELL, OrderType::LIMIT, 100, 15500 };
-    Order order7{ 7, 0, Side::SELL, OrderType::LIMIT, 100, 16000 };
-    Order order8{ 8, 0, Side::SELL, OrderType::LIMIT, 100, 16200 };
+    publisher.Start();
+    engine.Start();
+    gateway.Start();
 
-    engine.SubmitOrder(&order1);
-    engine.SubmitOrder(&order2);
-    engine.SubmitOrder(&order3);
-    engine.SubmitOrder(&order4);
-    engine.SubmitOrder(&order5);
-    engine.SubmitOrder(&order6);
-    engine.SubmitOrder(&order7);
-    engine.SubmitOrder(&order8);
-
-    auto book = engine.GetBook(0);
-    book->PrintBook();
-
-    std::cout << "Cancelling order 2...\n";
-    engine.CancelOrder(2);
-
-    book->PrintBook();
+    gateway.WaitUntilFinished();
+    while (!inputQueue->IsEmpty());
+    engine.Stop();
+    while (!outputQueue->IsEmpty());
+    publisher.Stop();
 
     return 0;
 }
