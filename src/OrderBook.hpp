@@ -33,7 +33,11 @@ private:
     std::vector<Order*> orders;
     ObjectPool<Order> orderPool;
 
-    uint64_t nextTradeId = 1;
+    uint64_t NextTradeId()
+    {
+        static uint64_t nextTradeId = 1;
+        return nextTradeId++;
+    }
 
     Order* RemoveOrder(Order* order, PriceLevel & level)
     {
@@ -113,7 +117,7 @@ private:
                 order->filledQuantity += filledQty;
                 resting->filledQuantity += filledQty;
 
-                output.OnMarketEvent(MarketDataEvent(order->orderId, order->orderId, order->symbolId, nextTradeId++, resting->orderId, order->price, filledQty));
+                output.OnMarketEvent(MarketDataEvent(order->orderId, order->orderId, order->symbolId, NextTradeId(), resting->orderId, resting->price, filledQty));
 
                 if (resting->IsFilled())
                     resting = RemoveOrder(resting, level);

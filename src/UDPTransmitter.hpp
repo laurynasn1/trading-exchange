@@ -11,6 +11,7 @@
 
 struct ItchHeader
 {
+    uint64_t sequenceNumber;
     char messageType;
     uint64_t timestamp;
 };
@@ -36,7 +37,7 @@ struct OrderExecMsg
 struct OrderDeleteMsg
 {
     ItchHeader header;
-    u_int64_t orderId;
+    uint64_t orderId;
 };
 
 struct TradeMsg
@@ -49,6 +50,11 @@ struct TradeMsg
     uint64_t matchId;
 };
 
+struct EndMarketMsg
+{
+    ItchHeader header;
+};
+
 #pragma pack(pop)
 
 class UDPTransmitter
@@ -56,6 +62,8 @@ class UDPTransmitter
 private:
     int sock;
     sockaddr_in groupSock;
+
+    uint64_t nextSequenceNumber = 1;
 
     template<typename MsgType>
     void SendMsg(const MsgType & msg)
@@ -75,13 +83,20 @@ private:
         }
     }
 
+    void MakeHeader(ItchHeader* header, char msgType, uint64_t timestamp)
+    {
+        header->sequenceNumber = htobe64(nextSequenceNumber++);
+        header->messageType = msgType;
+        header->timestamp = htobe64(timestamp);
+    }
+
 public:
     UDPTransmitter()
     {
         sock = socket(AF_INET, SOCK_DGRAM, 0);
         if (sock == -1)
         {
-            perror("sock");
+            perror("socket");
             throw std::runtime_error{ "Failed to create socket" };
         }
 
@@ -103,11 +118,11 @@ public:
     void SendOrderAdd(uint64_t orderId, std::string_view symbol, uint8_t side, uint32_t price, uint32_t quantity, uint64_t timestamp)
     {
         OrderAddMsg msg;
-        msg.header.messageType = 'A';
-        msg.header.timestamp = htobe64(timestamp);
+        MakeHeader(&msg.header, 'A', timestamp);
         msg.orderId = htobe64(orderId);
         msg.side = side;
         msg.quantity = htobe32(quantity);
+        memset(msg.symbol, 0, sizeof(msg.symbol));
         memcpy(msg.symbol, symbol.data(), std::min(symbol.length(), size_t(4)));
         msg.price = htobe32(price);
         SendMsg(msg);
@@ -116,8 +131,7 @@ public:
     void SendOrderExecuted(uint64_t orderId, uint32_t quantity, uint64_t matchNumber, uint64_t timestamp)
     {
         OrderExecMsg msg;
-        msg.header.messageType = 'E';
-        msg.header.timestamp = htobe64(timestamp);
+        MakeHeader(&msg.header, 'E', timestamp);
         msg.orderId = htobe64(orderId);
         msg.quantity = htobe32(quantity);
         msg.matchId = htobe64(matchNumber);
@@ -127,8 +141,7 @@ public:
     void SendOrderDeleted(uint64_t orderId, uint64_t timestamp)
     {
         OrderDeleteMsg msg;
-        msg.header.messageType = 'D';
-        msg.header.timestamp = htobe64(timestamp);
+        MakeHeader(&msg.header, 'D', timestamp);
         msg.orderId = htobe64(orderId);
         SendMsg(msg);
     }
@@ -136,13 +149,20 @@ public:
     void SendTradeMessage(std::string_view symbol, uint8_t side, uint32_t price, uint32_t quantity, uint64_t matchNumber, uint64_t timestamp)
     {
         TradeMsg msg;
-        msg.header.messageType = 'P';
-        msg.header.timestamp = htobe64(timestamp);
+        MakeHeader(&msg.header, 'P', timestamp);
         msg.side = side;
         msg.quantity = htobe32(quantity);
+        memset(msg.symbol, 0, sizeof(msg.symbol));
         memcpy(msg.symbol, symbol.data(), std::min(symbol.length(), size_t(4)));
         msg.price = htobe32(price);
         msg.matchId = htobe64(matchNumber);
+        SendMsg(msg);
+    }
+
+    void SendEndMarketHours()
+    {
+        EndMarketMsg msg;
+        MakeHeader(&msg.header, 'M', Timer::rdtsc());
         SendMsg(msg);
     }
 };

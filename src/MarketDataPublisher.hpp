@@ -44,6 +44,7 @@ public:
         running = false;
         if (thread.joinable())
             thread.join();
+        udpTransmitter.SendEndMarketHours();
     }
 
     void Run()
