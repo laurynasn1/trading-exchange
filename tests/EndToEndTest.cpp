@@ -18,7 +18,8 @@ TEST(EndToEndTest, ThroughputTest)
     OrderGateway gateway(inputQueue, NUM_ORDERS);
     QueueOutputPolicy output(outputQueue);
     MatchingEngine<QueueOutputPolicy> engine(inputQueue, output, NUM_SYMBOLS, NUM_ORDERS);
-    MarketDataPublisher publisher(outputQueue, NUM_ORDERS);
+    NoOpTransmitter transmitter;
+    MarketDataPublisher publisher(outputQueue, transmitter, NUM_ORDERS);
 
 #ifdef PERFSTAT
     std::this_thread::sleep_for(std::chrono::milliseconds(5000));
@@ -61,7 +62,8 @@ TEST(EndToEndTest, LatencyTest)
     OrderGateway gateway(inputQueue, NUM_ORDERS);
     QueueOutputPolicy output(outputQueue);
     MatchingEngine<QueueOutputPolicy> engine(inputQueue, output, NUM_SYMBOLS, NUM_ORDERS);
-    MarketDataPublisher publisher(outputQueue, NUM_ORDERS);
+    NoOpTransmitter transmitter;
+    MarketDataPublisher publisher(outputQueue, transmitter, NUM_ORDERS);
 
     LatencyStats latencyStats;
 
