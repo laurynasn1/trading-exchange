@@ -166,3 +166,13 @@ public:
         SendMsg(msg);
     }
 };
+
+class NoOpTransmitter
+{
+public:
+    void SendOrderAdd(uint64_t orderId, std::string_view symbol, uint8_t side, uint32_t price, uint32_t quantity, uint64_t timestamp) {}
+    void SendOrderExecuted(uint64_t orderId, uint32_t quantity, uint64_t matchNumber, uint64_t timestamp) {}
+    void SendOrderDeleted(uint64_t orderId, uint64_t timestamp) {}
+    void SendTradeMessage(std::string_view symbol, uint8_t side, uint32_t price, uint32_t quantity, uint64_t matchNumber, uint64_t timestamp) {}
+    void SendEndMarketHours() {}
+};

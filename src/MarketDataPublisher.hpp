@@ -11,17 +11,18 @@
 #include <iomanip>
 #include <immintrin.h>
 
+template<typename Transmitter>
 class MarketDataPublisher {
 private:
     std::shared_ptr<SPSCQueue<MarketDataEvent>> queue;
     std::thread thread;
     std::atomic<bool> running{ false };
 
-    UDPTransmitter udpTransmitter;
+    Transmitter & transmitter;
 
 public:
-    MarketDataPublisher(std::shared_ptr<SPSCQueue<MarketDataEvent>> queue_, size_t numRequests)
-        : queue(queue_)
+    MarketDataPublisher(std::shared_ptr<SPSCQueue<MarketDataEvent>> queue_, Transmitter & transmitter_, size_t numRequests)
+        : queue(queue_), transmitter(transmitter_)
     {
         receiveTimes.resize(numRequests);
         for (int i = 0; i < numRequests; i++)
@@ -44,7 +45,7 @@ public:
         running = false;
         if (thread.joinable())
             thread.join();
-        udpTransmitter.SendEndMarketHours();
+        transmitter.SendEndMarketHours();
     }
 
     void Run()
@@ -95,17 +96,17 @@ private:
         switch (event.type)
         {
         case EventType::ORDER_ACKED:
-            udpTransmitter.SendOrderAdd(event.orderId, SYMBOLS[event.symbolId], event.side == Side::BUY ? 'B' : 'S', event.price, event.quantity, event.timestamp);
+            transmitter.SendOrderAdd(event.orderId, SYMBOLS[event.symbolId], event.side == Side::BUY ? 'B' : 'S', event.price, event.quantity, event.timestamp);
             stats.ackedOrders++;
             break;
         case EventType::ORDER_FILLED:
-            udpTransmitter.SendOrderExecuted(event.orderId, event.quantity, event.tradeId, event.timestamp);
-            udpTransmitter.SendOrderExecuted(event.restingOrderId, event.quantity, event.tradeId, event.timestamp);
-            udpTransmitter.SendTradeMessage(SYMBOLS[event.symbolId], event.side == Side::BUY ? 'B' : 'S', event.price, event.quantity, event.tradeId, event.timestamp);
+            transmitter.SendOrderExecuted(event.orderId, event.quantity, event.tradeId, event.timestamp);
+            transmitter.SendOrderExecuted(event.restingOrderId, event.quantity, event.tradeId, event.timestamp);
+            transmitter.SendTradeMessage(SYMBOLS[event.symbolId], event.side == Side::BUY ? 'B' : 'S', event.price, event.quantity, event.tradeId, event.timestamp);
             stats.filledOrders++;
             break;
         case EventType::ORDER_CANCELLED:
-            udpTransmitter.SendOrderDeleted(event.orderId, event.timestamp);
+            transmitter.SendOrderDeleted(event.orderId, event.timestamp);
             stats.canceledOrders++;
             break;
         case EventType::ORDER_REJECTED:
