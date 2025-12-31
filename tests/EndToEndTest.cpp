@@ -15,9 +15,9 @@ TEST(EndToEndTest, ThroughputTest)
     auto inputQueue = std::make_shared<SPSCQueue<OrderRequest>>(QUEUE_SIZE);
     auto outputQueue = std::make_shared<SPSCQueue<MarketDataEvent>>(QUEUE_SIZE);
 
-    OrderGateway gateway(inputQueue, NUM_ORDERS);
+    OrderGateway gateway(inputQueue, MAX_NUM_SYMBOLS, NUM_ORDERS);
     QueueOutputPolicy output(outputQueue);
-    MatchingEngine<QueueOutputPolicy> engine(inputQueue, output, NUM_SYMBOLS, NUM_ORDERS);
+    MatchingEngine<QueueOutputPolicy> engine(inputQueue, output, MAX_NUM_SYMBOLS, NUM_ORDERS);
     NoOpTransmitter transmitter;
     MarketDataPublisher publisher(outputQueue, transmitter, NUM_ORDERS);
 
@@ -59,9 +59,9 @@ TEST(EndToEndTest, LatencyTest)
     auto inputQueue = std::make_shared<SPSCQueue<OrderRequest>>(QUEUE_SIZE);
     auto outputQueue = std::make_shared<SPSCQueue<MarketDataEvent>>(QUEUE_SIZE);
 
-    OrderGateway gateway(inputQueue, NUM_ORDERS);
+    OrderGateway gateway(inputQueue, MAX_NUM_SYMBOLS, NUM_ORDERS);
     QueueOutputPolicy output(outputQueue);
-    MatchingEngine<QueueOutputPolicy> engine(inputQueue, output, NUM_SYMBOLS, NUM_ORDERS);
+    MatchingEngine<QueueOutputPolicy> engine(inputQueue, output, MAX_NUM_SYMBOLS, NUM_ORDERS);
     NoOpTransmitter transmitter;
     MarketDataPublisher publisher(outputQueue, transmitter, NUM_ORDERS);
 

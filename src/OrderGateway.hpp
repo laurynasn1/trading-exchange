@@ -24,10 +24,10 @@ private:
     std::atomic<bool> running{ false };
 
 public:
-    OrderGateway(std::shared_ptr<SPSCQueue<OrderRequest>> queue_, size_t numRequests)
+    OrderGateway(std::shared_ptr<SPSCQueue<OrderRequest>> queue_, size_t numSymbols, size_t numRequests)
         : queue(queue_)
     {
-        GenerateRequests(numRequests);
+        GenerateRequests(numRequests, numSymbols);
         requestTimes.resize(numRequests, 0);
     }
 
@@ -44,6 +44,8 @@ public:
 
     void Stop()
     {
+        if (!running) return;
+
         running = false;
         WaitUntilFinished();
     }
@@ -68,7 +70,7 @@ public:
     }
 
 private:
-    void GenerateRequests(size_t numRequests)
+    void GenerateRequests(size_t numRequests, size_t numSymbols)
     {
         requests.reserve(numRequests);
         activeOrderIds.reserve(numRequests / 2);
@@ -79,7 +81,7 @@ private:
         std::uniform_int_distribution<> price_dist(14900, 15100);
         std::uniform_int_distribution<> qty_dist(100, 1000);
         std::uniform_int_distribution<> side_dist(0, 1);
-        std::uniform_int_distribution<> symbol_dist(0, NUM_SYMBOLS - 1);
+        std::uniform_int_distribution<> symbol_dist(0, numSymbols - 1);
 
         uint32_t mid_price = 15000;
 

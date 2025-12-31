@@ -95,6 +95,8 @@ public:
 
     void Stop()
     {
+        if (!running) return;
+
         running = false;
         if (thread.joinable())
             thread.join();

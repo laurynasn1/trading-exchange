@@ -112,6 +112,7 @@ public:
 
     ~UDPTransmitter()
     {
+        std::cout << "UDP Transmitter sent " << nextSequenceNumber - 1 << " messages\n";
         close(sock);
     }
 

@@ -36,7 +36,7 @@ struct OrderExecMsg
 struct OrderDeleteMsg
 {
     ItchHeader header;
-    u_int64_t orderId;
+    uint64_t orderId;
 };
 
 struct TradeMsg
@@ -68,7 +68,7 @@ void HandleOrderAdd(OrderAddMsg* msg)
     std::string symbol(msg->symbol);
     uint32_t price = be32toh(msg->price);
 
-    std::cout << "Order added: ID=" << orderId << " Side=" << side << " Symbol=" << symbol << " Quantity=" << quantity << " Price=" << price << "\n";
+    std::cout << "Order added: ID=" << orderId << " Side=" << side << " Symbol=" << symbol << " Quantity=" << quantity << " Price=$" << price / 100.0 << "\n";
 }
 
 void HandleOrderExecuted(OrderExecMsg* msg)
@@ -101,13 +101,14 @@ void HandleTradeMessage(TradeMsg* msg)
     uint32_t price = be32toh(msg->price);
     uint64_t matchId = be64toh(msg->matchId);
 
-    std::cout << "Trade message: Side=" << side << " Symbol=" << symbol << " Quantity=" << quantity << " Price=" << price << " MatchNumber=" << matchId << "\n";
+    std::cout << "Trade message: Side=" << side << " Symbol=" << symbol << " Quantity=" << quantity << " Price=$" << price / 100.0 << " MatchNumber=" << matchId << "\n";
 }
 
 void ProcessMessages(int sock)
 {
     char buf[MAX_PACKET_SIZE];
     uint64_t seqNumber = 1;
+    uint64_t messagesDropped = 0;
     while (true)
     {
         int bytesRead = recvfrom(sock, buf, sizeof(buf), 0, nullptr, nullptr);
@@ -117,6 +118,7 @@ void ProcessMessages(int sock)
         if (headerSeqNumber != seqNumber)
         {
             std::cout << "Sequence number mismatch: got " << headerSeqNumber << ", expected " << seqNumber << "\n";
+            messagesDropped += headerSeqNumber - seqNumber;
         }
 
         switch (header->messageType)
@@ -134,6 +136,7 @@ void ProcessMessages(int sock)
             HandleTradeMessage(reinterpret_cast<TradeMsg*>(buf));
             break;
         case 'M':
+            std::cout << "Messages processed: " << headerSeqNumber - messagesDropped << " Messages dropped: " << messagesDropped << "\n";
             return;
         default:
             break;
@@ -151,6 +154,12 @@ int main(int argc, char **argv)
         perror("socket");
         return 1;
     }
+
+    int rcvbuf = 4 * 1024 * 1024;
+    setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf));
+
+    int reuse = 1;
+    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
 
     sockaddr_in server_addr{};
     server_addr.sin_family = AF_INET;

@@ -2,9 +2,9 @@
 #include <array>
 #include <string>
 
-constexpr size_t NUM_SYMBOLS = 50;
+constexpr size_t MAX_NUM_SYMBOLS = 50;
 
-constexpr std::array<std::string_view, NUM_SYMBOLS> SYMBOLS = {
+constexpr std::array<std::string_view, MAX_NUM_SYMBOLS> SYMBOLS = {
     "AAPL", "MSFT", "NVDA", "GOOGL", "AMZN",
     "META", "TSLA", "AMD", "INTC", "NFLX",
 
