@@ -11,7 +11,6 @@
 template<typename OutputPolicy>
 class MatchingEngine {
 private:
-    std::unordered_map<std::string, uint8_t> symbolMap;
     std::vector<std::unique_ptr<OrderBook>> books;
 
     std::vector<char> orderToSymbol;
@@ -35,13 +34,12 @@ private:
 
 public:
     MatchingEngine(std::shared_ptr<SPSCQueue<OrderRequest>> input, OutputPolicy & output_, size_t numBooks, size_t maxNumOrders)
-        : symbolMap(LoadSymbolMap()), inputQueue(input), output(output_)
+        : inputQueue(input), output(output_)
     {
         orderToSymbol.resize(maxNumOrders, -1);
         books.reserve(numBooks);
-        auto it = symbolMap.begin();
-        for (int i = 0; i < numBooks && it != symbolMap.end(); i++, it++)
-            books.emplace_back(std::make_unique<OrderBook>(it->first, maxNumOrders));
+        for (int i = 0; i < numBooks; i++)
+            books.emplace_back(std::make_unique<OrderBook>(SYMBOLS[i], maxNumOrders));
     }
 
     MatchingEngine(OutputPolicy & output_, size_t numBooks = 1, size_t maxNumOrders = 20'000'000)
@@ -97,6 +95,8 @@ public:
 
     void Stop()
     {
+        if (!running) return;
+
         running = false;
         if (thread.joinable())
             thread.join();

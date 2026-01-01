@@ -1,6 +1,8 @@
 #pragma once
 #include <cstdint>
 #include <string>
+
+#include "Order.hpp"
 #include "Timer.hpp"
 
 enum class EventType
@@ -24,6 +26,8 @@ struct MarketDataEvent
     EventType type;
     uint64_t orderId;
     uint64_t requestId;
+    uint8_t symbolId;
+    Side side;
     uint64_t timestamp;
 
     uint64_t tradeId;
@@ -35,11 +39,11 @@ struct MarketDataEvent
 
     MarketDataEvent() {}
 
-    MarketDataEvent(uint64_t oId, uint64_t rId, uint32_t p, uint32_t q)
-        : type(EventType::ORDER_ACKED), orderId(oId), requestId(rId), price(p), quantity(q), timestamp(Timer::rdtsc()) {}
+    MarketDataEvent(uint64_t oId, uint64_t rId, uint8_t sId, Side s, uint32_t p, uint32_t q)
+        : type(EventType::ORDER_ACKED), orderId(oId), requestId(rId), symbolId(sId), side(s), price(p), quantity(q), timestamp(Timer::rdtsc()) {}
 
-    MarketDataEvent(uint64_t oId, uint64_t rId, uint64_t tId, uint64_t roId, uint32_t p, uint32_t q)
-        : type(EventType::ORDER_FILLED), orderId(oId), requestId(rId), tradeId(tId), restingOrderId(rId), price(p), quantity(q), timestamp(Timer::rdtsc()) {}
+    MarketDataEvent(uint64_t oId, uint64_t rId, uint8_t sId, uint64_t tId, uint64_t restingId, uint32_t p, uint32_t q)
+        : type(EventType::ORDER_FILLED), orderId(oId), requestId(rId), symbolId(sId), tradeId(tId), restingOrderId(restingId), price(p), quantity(q), timestamp(Timer::rdtsc()) {}
 
     MarketDataEvent(uint64_t oId, uint64_t rId)
         : type(EventType::ORDER_CANCELLED), orderId(oId), requestId(rId), timestamp(Timer::rdtsc()) {}

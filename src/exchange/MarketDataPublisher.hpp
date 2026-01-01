@@ -2,6 +2,7 @@
 #include "SPSCQueue.hpp"
 #include "OrderBook.hpp"
 #include "Threading.hpp"
+#include "UDPTransmitter.hpp"
 
 #include <thread>
 #include <atomic>
@@ -10,15 +11,18 @@
 #include <iomanip>
 #include <immintrin.h>
 
+template<typename Transmitter>
 class MarketDataPublisher {
 private:
     std::shared_ptr<SPSCQueue<MarketDataEvent>> queue;
     std::thread thread;
     std::atomic<bool> running{ false };
 
+    Transmitter & transmitter;
+
 public:
-    MarketDataPublisher(std::shared_ptr<SPSCQueue<MarketDataEvent>> queue_, size_t numRequests)
-        : queue(queue_)
+    MarketDataPublisher(std::shared_ptr<SPSCQueue<MarketDataEvent>> queue_, Transmitter & transmitter_, size_t numRequests)
+        : queue(queue_), transmitter(transmitter_)
     {
         receiveTimes.resize(numRequests);
         for (int i = 0; i < numRequests; i++)
@@ -38,9 +42,12 @@ public:
 
     void Stop()
     {
+        if (!running) return;
+
         running = false;
         if (thread.joinable())
             thread.join();
+        transmitter.SendEndMarketHours();
     }
 
     void Run()
@@ -50,15 +57,15 @@ public:
 
         while (running)
         {
-            MarketDataEvent* trade = queue->GetReadIndex();
+            MarketDataEvent* event = queue->GetReadIndex();
 
-            if (trade == nullptr)
+            if (event == nullptr)
             {
                 _mm_pause();
                 continue;
             }
 
-            Publish(*trade);
+            Publish(*event);
             eventsProcessed++;
 
             queue->UpdateReadIndex();
@@ -79,24 +86,29 @@ public:
     }
 
 private:
-    void Publish(const MarketDataEvent& trade)
+    void Publish(const MarketDataEvent& event)
     {
-        if (!seenRequestIds[trade.requestId])
+        if (!seenRequestIds[event.requestId])
         {
-            receiveTimes[trade.requestId] = Timer::rdtsc();
-            seenRequestIds[trade.requestId] = true;
+            receiveTimes[event.requestId] = Timer::rdtsc();
+            seenRequestIds[event.requestId] = true;
             std::atomic_thread_fence(std::memory_order_release);
         }
 
-        switch (trade.type)
+        switch (event.type)
         {
         case EventType::ORDER_ACKED:
+            transmitter.SendOrderAdd(event.orderId, SYMBOLS[event.symbolId], event.side == Side::BUY ? 'B' : 'S', event.price, event.quantity, event.timestamp);
             stats.ackedOrders++;
             break;
         case EventType::ORDER_FILLED:
+            transmitter.SendOrderExecuted(event.orderId, event.quantity, event.tradeId, event.timestamp);
+            transmitter.SendOrderExecuted(event.restingOrderId, event.quantity, event.tradeId, event.timestamp);
+            transmitter.SendTradeMessage(SYMBOLS[event.symbolId], event.side == Side::BUY ? 'B' : 'S', event.price, event.quantity, event.tradeId, event.timestamp);
             stats.filledOrders++;
             break;
         case EventType::ORDER_CANCELLED:
+            transmitter.SendOrderDeleted(event.orderId, event.timestamp);
             stats.canceledOrders++;
             break;
         case EventType::ORDER_REJECTED:

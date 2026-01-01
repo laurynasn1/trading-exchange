@@ -22,7 +22,7 @@ struct PriceLevel
 class OrderBook
 {
 private:
-    std::string symbol;
+    std::string_view symbol;
 
     std::array<PriceLevel, NUM_PRICE_LEVELS> bids;
     std::array<PriceLevel, NUM_PRICE_LEVELS> asks;
@@ -33,7 +33,11 @@ private:
     std::vector<Order*> orders;
     ObjectPool<Order> orderPool;
 
-    uint64_t nextTradeId = 1;
+    uint64_t NextTradeId()
+    {
+        static uint64_t nextTradeId = 1;
+        return nextTradeId++;
+    }
 
     Order* RemoveOrder(Order* order, PriceLevel & level)
     {
@@ -86,7 +90,7 @@ private:
         else
             minAsk = std::min(minAsk, order->price);
 
-        output.OnMarketEvent(MarketDataEvent(order->orderId, order->orderId, order->price, order->RemainingQuantity()));
+        output.OnMarketEvent(MarketDataEvent(order->orderId, order->orderId, order->symbolId, order->side, order->price, order->RemainingQuantity()));
     }
 
     template<typename OutputPolicy>
@@ -113,7 +117,7 @@ private:
                 order->filledQuantity += filledQty;
                 resting->filledQuantity += filledQty;
 
-                output.OnMarketEvent(MarketDataEvent(order->orderId, order->orderId, nextTradeId++, resting->orderId, order->price, filledQty));
+                output.OnMarketEvent(MarketDataEvent(order->orderId, order->orderId, order->symbolId, NextTradeId(), resting->orderId, resting->price, filledQty));
 
                 if (resting->IsFilled())
                     resting = RemoveOrder(resting, level);
@@ -155,7 +159,7 @@ private:
     }
 
 public:
-    OrderBook(std::string symbol_, size_t numMaxOrders) : symbol(std::move(symbol_)), orderPool(numMaxOrders)
+    OrderBook(std::string_view symbol_, size_t numMaxOrders) : symbol(std::move(symbol_)), orderPool(numMaxOrders)
     {
         orders.resize(numMaxOrders, nullptr);
     }

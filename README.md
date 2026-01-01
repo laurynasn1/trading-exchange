@@ -1,4 +1,4 @@
-# Low-Latency Limit Order Book in C++
+# Low-Latency Order Matching Engine in C++
 
 ## Tech stack
 
@@ -16,8 +16,9 @@
 
 - Supports `SubmitOrder` and `CancelOrder` operations.
 - Supports market, limit, IOC and FOK orders.
+- Sends ITCH-like market data feed via UDP multicast.
 - Prices from $0.01 to $10000.00 (1 to 1000000 cents).
-- 50 stock symbols.
+- Up to 50 stock symbols.
 
 ## Architecture
 
@@ -78,11 +79,33 @@ Mock market data publisher reads market data events and updates statistics: orde
 
 There are 2 end-to-end tests: throughput and latency. Throughput test fires all orders at once and measures how long it took to process them all. Meanwhile latency test sends orders one by one, waiting for it to complete and records the latency.
 
-## Build and Run
+## Build
 
 ```bash
 cmake -Bbuild -DCMAKE_BUILD_TYPE=Release
 make -C build/ -j
+```
+
+## Run benchmarks
+
+```bash
 ./build/bench
+```
+
+## Run end-to-end tests
+
+```bash
 ./build/endtoend
+```
+
+## Run application
+
+First, run one or more clients that will listen for market data feed:
+```bash
+./build/client
+```
+
+Then run the matching engine main application:
+```bash
+./build/exchange <number of orders to send> [<number of stock symbols to use>] [<queue size>]
 ```
