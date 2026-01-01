@@ -18,9 +18,9 @@ FetchContent_MakeAvailable(
         googlebenchmark)
 
 add_library(MatchingEngineLib INTERFACE)
-target_include_directories(MatchingEngineLib INTERFACE src/ src/utils/)
+target_include_directories(MatchingEngineLib INTERFACE src/ src/types/ src/exchange/ src/utils/)
 
-add_executable(matching_engine src/main.cpp)
+add_executable(matching_engine src/exchange/MatchingEngine.cpp)
 target_link_libraries(matching_engine PRIVATE MatchingEngineLib)
 
 enable_testing()
@@ -42,3 +42,4 @@ if ("${PERFSTAT}" STREQUAL "YES")
 endif()
 
 add_executable(client src/client/MarketDataFeedHandler.cpp)
+target_link_libraries(client PRIVATE MatchingEngineLib)
