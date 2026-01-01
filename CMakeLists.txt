@@ -20,8 +20,8 @@ FetchContent_MakeAvailable(
 add_library(MatchingEngineLib INTERFACE)
 target_include_directories(MatchingEngineLib INTERFACE src/ src/types/ src/exchange/ src/utils/)
 
-add_executable(matching_engine src/exchange/MatchingEngine.cpp)
-target_link_libraries(matching_engine PRIVATE MatchingEngineLib)
+add_executable(exchange src/exchange/TradingExchange.cpp)
+target_link_libraries(exchange PRIVATE MatchingEngineLib)
 
 enable_testing()
 include(GoogleTest)
